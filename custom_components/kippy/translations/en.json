@@ -1,0 +1,130 @@
+{
+  "title": "Kippy",
+  "config": {
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication"
+    },
+    "step": {
+      "user": {
+        "title": "Kippy",
+        "description": "Connect to your Kippy account",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      }
+    }
+  },
+  "options": {
+    "error": {
+      "invalid_device_update_interval": "Enter a value between 1 and 1440 minutes."
+    },
+    "step": {
+      "init": {
+        "title": "Kippy options",
+        "description": "Configure how often Home Assistant updates Kippy devices.",
+        "data": {
+          "device_update_interval": "Kippy devices update frequency"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "no_credentials": {
+      "message": "No stored credentials; call login() first"
+    },
+    "auth_failure": {
+      "message": "Unexpected authentication failure"
+    },
+    "no_auth_data": {
+      "message": "No authentication data available"
+    },
+    "expired": {
+      "message": "Expired"
+    }
+  },
+  "entity": {
+    "number": {
+      "device_update_frequency": {
+        "name": "Kippy devices update frequency"
+      }
+    },
+    "binary_sensor": {
+      "firmware_upgrade_available": {
+        "name": "Firmware Upgrade available",
+        "state": {
+          "on": "Yes",
+          "off": "No"
+        }
+      }
+    },
+    "sensor": {
+      "operating_status": {
+        "name": "Operating status",
+        "state": {
+          "live": "Live",
+          "starting_live": "Starting live",
+          "idle": "Idle",
+          "energy_saving": "Energy saving"
+        }
+      },
+      "energy_saving_status": {
+        "name": "Energy saving status",
+        "state": {
+          "on": "On",
+          "off": "Off",
+          "on_pending": "On (Pending Next Contact)",
+          "off_pending": "Off (Pending Next Contact)"
+        }
+      },
+      "pet_type": {
+        "name": "Pet type",
+        "state": {
+          "dog": "Dog",
+          "cat": "Cat"
+        }
+      },
+      "next_contact": {
+        "name": "Next contact"
+      },
+      "distance_from_home": {
+        "name": "Distance from home"
+      }
+    },
+    "switch": {
+      "live_tracking": {
+        "name": "Live tracking",
+        "state": {
+          "on": "On",
+          "off": "Off"
+        }
+      },
+      "ignore_lbs_updates": {
+        "name": "Ignore LBS (Low accuracy) updates",
+        "state": {
+          "on": "On",
+          "off": "Off"
+        }
+      },
+      "gps_on_default": {
+        "name": "GPS Activation",
+        "state": {
+          "on": "On",
+          "off": "Off"
+        }
+      }
+    },
+    "button": {
+      "refresh_map_attributes": {
+        "name": "Refresh map attributes"
+      },
+      "refresh_activities": {
+        "name": "Refresh activities"
+      },
+      "refresh_pets": {
+        "name": "Refresh pets"
+      }
+    }
+  }
+}
