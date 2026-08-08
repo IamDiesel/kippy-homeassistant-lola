@@ -44,8 +44,6 @@ class MapRefreshSettings:
 
 
 def coerce_int(value: Any) -> int | None:
-    """Return ``value`` as an int when possible."""
-
     if isinstance(value, str):
         value = value.strip()
         if not value:
@@ -57,8 +55,6 @@ def coerce_int(value: Any) -> int | None:
 
 
 def normalize_device_update_interval(value: Any) -> int | None:
-    """Return a sanitized minutes value for the device update interval."""
-
     minutes = coerce_int(value)
     if minutes is None:
         return None
@@ -72,8 +68,6 @@ def normalize_device_update_interval(value: Any) -> int | None:
 
 
 def get_device_update_interval(entry: ConfigEntry) -> int:
-    """Return the configured minutes between device updates."""
-
     normalized = normalize_device_update_interval(
         entry.options.get(DEVICE_UPDATE_INTERVAL_KEY)
     )
@@ -85,8 +79,6 @@ def get_device_update_interval(entry: ConfigEntry) -> int:
 async def async_update_device_update_interval(
     hass: HomeAssistant, entry: ConfigEntry, minutes: int
 ) -> None:
-    """Persist the config entry option for the device update interval."""
-
     if entry.options.get(DEVICE_UPDATE_INTERVAL_KEY) == minutes:
         return
 
@@ -99,8 +91,6 @@ async def async_update_device_update_interval(
 
 
 def build_device_name(pet: Mapping[str, Any], prefix: str = "Kippy") -> str:
-    """Return a display name for a pet."""
-
     pet_name = pet.get("petName")
     return f"{prefix} {pet_name}" if pet_name else prefix
 
@@ -108,8 +98,6 @@ def build_device_name(pet: Mapping[str, Any], prefix: str = "Kippy") -> str:
 def build_device_info(
     pet_id: int | str, pet: Mapping[str, Any], name: str | None = None
 ) -> DeviceInfo:
-    """Create a DeviceInfo object for a Kippy pet."""
-
     identifiers: set[tuple[str, str]] = {(DOMAIN, str(pet_id))}
     connections: set[tuple[str, str]] = set()
 
@@ -137,8 +125,6 @@ def build_device_info(
 
 
 def is_pet_subscription_active(pet: Mapping[str, Any]) -> bool:
-    """Return ``True`` if the pet's subscription is active."""
-
     expired_days = pet.get("expired_days")
     try:
         return int(expired_days) < 0
@@ -146,20 +132,22 @@ def is_pet_subscription_active(pet: Mapping[str, Any]) -> bool:
         return True
 
 
+# FIX: String-Rückgabewerte (UUIDs) für Kippy-Tracker-IDs erlauben
 def normalize_kippy_identifier(
     pet: Mapping[str, Any], *, include_pet_id: bool = False
-) -> int | None:
-    """Return the numeric Kippy identifier for ``pet`` if present."""
-
+) -> int | str | None:
     identifier = pet.get("kippyID") or pet.get("kippy_id")
     if identifier is None and include_pet_id:
         identifier = pet.get("petID")
     if identifier is None:
         return None
-    try:
-        return int(identifier)
-    except (TypeError, ValueError):
-        return None
+    if isinstance(identifier, int):
+        return identifier
+    if isinstance(identifier, str):
+        if identifier.isdigit():
+            return int(identifier)
+        return identifier
+    return str(identifier)
 
 
 def update_pet_data(
@@ -168,8 +156,6 @@ def update_pet_data(
     current: MutableMapping[str, Any],
     preserve: Sequence[str] | None = None,
 ) -> MutableMapping[str, Any]:
-    """Return the latest pet data from ``pets`` preserving ``preserve`` keys."""
-
     preserve = tuple(preserve or ())
     for pet in pets:
         if pet.get("petID") != pet_id:
@@ -183,8 +169,6 @@ def update_pet_data(
 
 
 def _normalize_refresh_value(value: Any) -> int | None:
-    """Return ``value`` as a positive integer seconds value when valid."""
-
     try:
         result = int(value)
     except (TypeError, ValueError):
@@ -197,8 +181,6 @@ def _normalize_refresh_value(value: Any) -> int | None:
 def get_map_refresh_settings(
     entry: ConfigEntry, pet_id: int | str
 ) -> MapRefreshSettings | None:
-    """Return stored map refresh settings for ``pet_id`` if available."""
-
     options = entry.options.get(MAP_REFRESH_OPTIONS_KEY)
     if not isinstance(options, Mapping):
         return None
@@ -223,8 +205,6 @@ def get_map_refresh_settings(
 def _collect_refresh_updates(
     idle_seconds: int | None, live_seconds: int | None
 ) -> dict[str, int]:
-    """Return a mapping of updated idle/live refresh values in seconds."""
-
     updates: dict[str, int] = {}
     if idle_seconds is not None:
         normalized_idle = _normalize_refresh_value(idle_seconds)
@@ -238,8 +218,6 @@ def _collect_refresh_updates(
 
 
 def _copy_map_refresh_options(entry: ConfigEntry) -> dict[str, dict[str, Any]]:
-    """Return a mutable copy of stored map refresh settings."""
-
     copied: dict[str, dict[str, Any]] = {}
     existing = entry.options.get(MAP_REFRESH_OPTIONS_KEY)
     if not isinstance(existing, Mapping):
@@ -258,8 +236,6 @@ async def async_update_map_refresh_settings(
     idle_seconds: int | None = None,
     live_seconds: int | None = None,
 ) -> None:
-    """Persist updated map refresh settings for ``pet_id``."""
-
     updates = _collect_refresh_updates(idle_seconds, live_seconds)
     if not updates:
         return

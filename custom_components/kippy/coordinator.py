@@ -83,8 +83,6 @@ class KippyDataUpdateCoordinator(DataUpdateCoordinator):
             return
 
         self.update_interval = interval
-
-        # Apply the new interval immediately by rescheduling the refresh task.
         self._schedule_refresh()
 
     def _handle_new_pets(self, pets: list[dict[str, Any]]) -> None:
@@ -137,7 +135,6 @@ class KippyDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Fetch data from the API endpoint."""
-        # ``get_pet_kippy_list`` internally ensures a valid login session.
         try:
             pets = await self.api.get_pet_kippy_list()
         except API_EXCEPTIONS as err:
@@ -198,10 +195,8 @@ def _derive_operating_status(
     contact_time, fix_time = timestamps
     has_both_times = contact_time is not None and fix_time is not None
     status = operating_status_str
-    use_live_interval = False
 
     if operating_status_int == OPERATING_STATUS.LIVE:
-        use_live_interval = True
         if previous_status == OPERATING_STATUS_MAP[OPERATING_STATUS.LIVE]:
             status = OPERATING_STATUS_MAP[OPERATING_STATUS.LIVE]
         elif has_both_times and contact_time == fix_time:
@@ -224,7 +219,13 @@ def _derive_operating_status(
         status = OPERATING_STATUS_MAP.get(operating_status_int)
     elif operating_status_str == OPERATING_STATUS_STARTING_LIVE:
         status = OPERATING_STATUS_STARTING_LIVE
-        use_live_interval = True
+
+    # FIX: Das Live-Intervall MUSS auch bei "starting_live" genutzt werden,
+    # damit wir nicht in den Deadlock laufen!
+    use_live_interval = status in (
+        OPERATING_STATUS_MAP[OPERATING_STATUS.LIVE],
+        OPERATING_STATUS_STARTING_LIVE,
+    )
 
     return status, use_live_interval
 
@@ -235,7 +236,7 @@ class KippyMapDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(
         self,
         context: CoordinatorContext,
-        kippy_id: int,
+        kippy_id: int | str,
         settings: MapRefreshSettings | None = None,
     ) -> None:
         """Initialize the map coordinator."""
@@ -369,12 +370,12 @@ class KippyActivityCategoriesDataUpdateCoordinator(DataUpdateCoordinator):
             kwargs["config_entry"] = context.config_entry
         super().__init__(context.hass, _LOGGER, **kwargs)
 
-    async def _async_update_data(self) -> dict[int, dict[str, Any]]:
+    async def _async_update_data(self) -> dict[int | str, dict[str, Any]]:
         """Fetch activity categories for all configured pets."""
         now = dt_util.now()
         from_date = now.strftime("%Y-%m-%d")
         to_date = (now + timedelta(days=1)).strftime("%Y-%m-%d")
-        data: dict[int, dict[str, Any]] = {}
+        data: dict[int | str, dict[str, Any]] = {}
         try:
             for pet_id in self.pet_ids:
                 data[pet_id] = await self.api.get_activity_categories(

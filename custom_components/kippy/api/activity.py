@@ -2,20 +2,28 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict
 
-from homeassistant.util import dt as dt_util
-
-from ..const import (
-    ACTIVITY_ID,
-    FORMULA_GROUP,
-    GET_ACTIVITY_CATEGORIES_PATH,
-    REQUEST_HEADERS,
-    T_ID,
-)
 from ._base import BaseKippyApi
-from ._utils import _tz_hours, _weeks_param
+
+GET_ACTIVITIES_CAT_QUERY = """
+query getActivitiesCat($petId: String!, $weekIndex: Int!, $from: Int!, $to: Int!) {
+  getActivitiesCat(petId: $petId, weekIndex: $weekIndex, from: $from, to: $to) {
+    activityReport {
+      walk { value }
+      sleep { value }
+      calories { value }
+      steps { value }
+      feed { value }
+      jumps { value }
+      onTheMove { value }
+      highMovement { value }
+      grooming { value }
+    }
+  }
+}
+"""
 
 
 class ActivityEndpoint(BaseKippyApi):
@@ -23,58 +31,56 @@ class ActivityEndpoint(BaseKippyApi):
 
     async def get_activity_categories(
         self,
-        pet_id: int,
+        pet_id: str,
         from_date: str,
         to_date: str,
         time_division: int,
         _weeks: int,
     ) -> Dict[str, Any]:
-        """Retrieve activity categories for a pet."""
+        """Retrieve activity categories via GraphQL."""
 
-        start = datetime.strptime(from_date, "%Y-%m-%d")
-        end = datetime.strptime(to_date, "%Y-%m-%d")
-
-        tzinfo = dt_util.now().tzinfo
-        start_ts = int(start.replace(tzinfo=tzinfo).timestamp())
-        end_ts = int(end.replace(tzinfo=tzinfo).timestamp())
-
-        tz_hours_value = _tz_hours(start.replace(tzinfo=tzinfo))
-        weeks_value = _weeks_param(start, end)
-
-        time_divisions = {1: "h", 2: "d", 3: "w"}.get(time_division, "h")
-
-        payload = await self._authenticated_payload(
-            extra={
-                "petID": pet_id,
-                "activityID": ACTIVITY_ID.ALL,
-                "fromDate": start_ts,
-                "toDate": end_ts,
-                "timeDivisions": time_divisions,
-                "formulaGroup": FORMULA_GROUP.SUM,
-                "tID": T_ID,
-                "timezone": tz_hours_value,
-                "weeks": weeks_value,
-            }
+        # AWS erwartet exakt den Start und das Ende der aktuellen Woche in Sekunden
+        dt = datetime.now()
+        start_of_week = dt - timedelta(days=dt.weekday())
+        start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_week = start_of_week + timedelta(
+            days=6, hours=23, minutes=59, seconds=59
         )
 
-        data = await self.post_with_refresh(
-            GET_ACTIVITY_CATEGORIES_PATH, payload, REQUEST_HEADERS
-        )
+        from_ts = int(start_of_week.timestamp())
+        to_ts = int(end_of_week.timestamp())
 
-        if isinstance(data, dict):
-            if "data" in data:
-                payload = data.get("data") or {}
-            else:
-                payload = {
-                    "activities": data.get("ActivitiesData"),
-                    "avg": data.get("AVGData"),
-                    "health": data.get("HealthData"),
-                }
-        else:
-            payload = {}
+        year, week, _ = dt.isocalendar()
+        week_index = int(f"{year}{week:02d}")
 
-        return {
-            "activities": payload.get("activities"),
-            "avg": payload.get("avg"),
-            "health": payload.get("health"),
+        variables = {
+            "petId": str(pet_id),
+            "weekIndex": week_index,
+            "from": from_ts,
+            "to": to_ts,
         }
+
+        data = await self.execute_graphql(GET_ACTIVITIES_CAT_QUERY, variables)
+        report = data.get("getActivitiesCat", {}).get("activityReport") or {}
+
+        # Das Datum muss exakt `from_date` entsprechen, damit sensor.py es zuordnen kann
+        daily_entry = {
+            "date": from_date,
+            "walk": {"value": report.get("walk", {}).get("value", 0)},
+            "sleep": {"value": report.get("sleep", {}).get("value", 0)},
+            "calories": {"value": report.get("calories", {}).get("value", 0)},
+            "steps": {"value": report.get("steps", {}).get("value", 0)},
+            "feed": {"value": report.get("feed", {}).get("value", 0)},
+            "eat": {"value": report.get("feed", {}).get("value", 0)},
+            "jumps": {"value": report.get("jumps", {}).get("value", 0)},
+            "on_the_move": {"value": report.get("onTheMove", {}).get("value", 0)},
+            "high_movement": {"value": report.get("highMovement", {}).get("value", 0)},
+            "run": {"value": report.get("highMovement", {}).get("value", 0)},
+            "play": {"value": report.get("highMovement", {}).get("value", 0)},
+            "climb": {"value": report.get("highMovement", {}).get("value", 0)},
+            "grooming": {"value": report.get("grooming", {}).get("value", 0)},
+            "rest": {"value": report.get("onTheMove", {}).get("value", 0)},
+            "relax": {"value": report.get("onTheMove", {}).get("value", 0)},
+        }
+
+        return {"activities": [daily_entry], "avg": {}, "health": {}}
