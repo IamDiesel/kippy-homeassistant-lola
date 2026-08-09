@@ -10,7 +10,7 @@ from typing import Any, Awaitable
 
 import voluptuous as vol
 from aiohttp import ClientResponseError
-from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
@@ -34,11 +34,12 @@ from .helpers import (
     is_pet_subscription_active,
     normalize_kippy_identifier,
 )
+from .models import KippyConfigEntry, KippyData
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> bool:
     """Set up Kippy from a config entry."""
     email = entry.data.get(CONF_EMAIL)
     password = entry.data.get(CONF_PASSWORD)
@@ -82,21 +83,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             raise ConfigEntryAuthFailed from err
         raise ConfigEntryNotReady from err
 
-    hass.data[DOMAIN][entry.entry_id] = {
-        "api": api,
-        "coordinator": coordinator,
-        "map_coordinators": map_coordinators,
-        "activity_coordinator": activity_coordinator,
-        "activity_timers": activity_timers,
-    }
+    entry.runtime_data = KippyData(
+        api=api,
+        coordinator=coordinator,
+        map_coordinators=map_coordinators,
+        activity_coordinator=activity_coordinator,
+        activity_timers=activity_timers,
+    )
 
     async def _async_options_updated(
-        hass: HomeAssistant, updated_entry: ConfigEntry
+        hass: HomeAssistant, updated_entry: KippyConfigEntry
     ) -> None:
-        data = hass.data.get(DOMAIN, {}).get(updated_entry.entry_id)
+        data = updated_entry.runtime_data
         if not data:
             return
-        base_coordinator: KippyDataUpdateCoordinator = data["coordinator"]
+        base_coordinator = data.coordinator
+
         base_coordinator.set_update_interval_minutes(
             get_device_update_interval(updated_entry)
         )
@@ -195,13 +197,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> bool:
     """Unload Kippy config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        data = hass.data[DOMAIN].pop(entry.entry_id, None)
+        data = entry.runtime_data
         if data is not None:
-            for timer in data.get("activity_timers", {}).values():
+            for timer in data.activity_timers.values():
+
                 timer.async_cancel()
             shutdown_tasks: list[Awaitable[Any]] = []
 
@@ -210,14 +213,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 if shutdown is not None:
                     shutdown_tasks.append(shutdown())
 
-            coordinator = data.get("coordinator")
+            coordinator = data.coordinator
             if coordinator is not None:
                 _collect_shutdown(coordinator)
 
-            for map_coordinator in data.get("map_coordinators", {}).values():
+            for map_coordinator in data.map_coordinators.values():
                 _collect_shutdown(map_coordinator)
 
-            activity_coordinator = data.get("activity_coordinator")
+            activity_coordinator = data.activity_coordinator
             if activity_coordinator is not None:
                 _collect_shutdown(activity_coordinator)
 
