@@ -88,7 +88,8 @@ class KippyDeviceUpdateFrequencyNumber(
         return get_device_update_interval(self._config_entry)
 
     async def async_added_to_hass(self) -> None:
-        """Register listeners when added to Home Assistant."""
+        """Register listeners
+        when added to Home Assistant."""
 
         await super().async_added_to_hass()
         self._unsub_options = self._config_entry.add_update_listener(
@@ -138,22 +139,18 @@ class KippyDeviceUpdateFrequencyNumber(
 class KippyUpdateFrequencyNumber(KippyPetEntity, NumberEntity):
     """Number entity for GPS automatic update frequency."""
 
+    _attr_has_entity_name = True
     _attr_native_min_value = 1
-    _attr_native_max_value = 24
+    _attr_native_max_value = 60 * 24
     _attr_native_step = 1
-    _attr_native_unit_of_measurement = "h"
+    _attr_native_unit_of_measurement = "min"
     _attr_mode = NumberMode.BOX
 
     def __init__(
         self, coordinator: KippyDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{pet_name} {LOCALIZATION_TECHNOLOGY_GPS} Automatic update frequency"
-            if pet_name
-            else f"{LOCALIZATION_TECHNOLOGY_GPS} Automatic update frequency"
-        )
+        self._attr_name = f"{LOCALIZATION_TECHNOLOGY_GPS} Automatic update frequency"
         self._attr_unique_id = f"{self._pet_id}_update_frequency"
         self._attr_translation_key = "update_frequency"
 
@@ -173,6 +170,7 @@ class KippyUpdateFrequencyNumber(KippyPetEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         int_value = int(value)
         kippy_id = normalize_kippy_identifier(self._pet_data)
+
         gps_val = self._pet_data.get("gpsOnDefault")
         if gps_val is None:
             gps_val = self._pet_data.get("gps_on_default")
@@ -182,15 +180,28 @@ class KippyUpdateFrequencyNumber(KippyPetEntity, NumberEntity):
             gps_on_default = bool(gps_val)
 
         if kippy_id is not None:
+            # Sende den neuen Minuten-Wert an die Cloud
             data = await self.coordinator.api.modify_kippy_settings(
                 kippy_id,
                 update_frequency=int_value,
                 gps_on_default=gps_on_default,
             )
-            new_value = data.get("update_frequency", int_value)
-            self._pet_data["updateFrequency"] = int(new_value)
+
+            # Die Cloud antwortet mit einem verschachtelten Dict.
+            # Wenn der Call erfolgreich war,
+            # speichern wir den neuen Wert lokal.
+            # (Wir extrahieren keine Daten mehr aus dem Response-Dict,
+            # sondern nutzen int_value)
+            if data and data.get("update_frequency"):
+                self._pet_data["updateFrequency"] = int_value
+            else:
+                # Fallback, falls die API keine Antwort liefert,
+                # aber auch keinen Fehler wirft.
+                self._pet_data["updateFrequency"] = int_value
+
         else:
             self._pet_data["updateFrequency"] = int_value
+
         self.async_write_ha_state()
         self.coordinator.async_update_listeners()
 

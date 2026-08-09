@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Dict
 
-from ..const import KIPPYMAP_MODIFY_SETTINGS_PATH, REQUEST_HEADERS
 from ._base import BaseKippyApi
+
+SEND_SETTING_MUTATION = """
+mutation sendSetting($setting: Setting!) {
+  sendSetting(setting: $setting) {
+    code
+    message
+  }
+}
+"""
 
 
 class SettingsEndpoint(BaseKippyApi):
@@ -13,22 +22,58 @@ class SettingsEndpoint(BaseKippyApi):
 
     async def modify_kippy_settings(
         self,
-        kippy_id: int,
+        kippy_id: int | str,
         *,
         update_frequency: float | None = None,
         gps_on_default: bool | None = None,
         energy_saving_mode: bool | None = None,
     ) -> Dict[str, Any]:
-        """Modify settings for a specific device."""
+        """Modify settings for a specific device via GraphQL."""
 
-        payload = await self._authenticated_payload(extra={"modify_kippy_id": kippy_id})
-        if update_frequency is not None:
-            payload["update_frequency"] = float(f"{float(update_frequency):.1f}")
-        if gps_on_default is not None:
-            payload["gps_on_default"] = bool(gps_on_default)
+        responses = {}
+
+        # 1. Update Frequency und GPS On Default
+        # In GraphQL wird beides als stringifiziertes JSON im 'updateObject' übergeben.
+        if update_frequency is not None or gps_on_default is not None:
+            # Wenn Home Assistant übergibt das Intervall in Minuten
+            # die API Minuten erwartet.
+            freq_mins = (
+                int(float(update_frequency)) if update_frequency is not None else 60
+            )
+            gps_on = bool(gps_on_default) if gps_on_default is not None else True
+
+            update_obj = json.dumps(
+                {"updateFrequency": freq_mins, "enableGpsOnDefault": gps_on}
+            )
+
+            variables = {
+                "setting": {
+                    "operationType": "UPDATE",
+                    "settingType": "UPDATE_FREQUENCY",
+                    "deviceId": str(kippy_id),
+                    "updateObject": update_obj,
+                }
+            }
+
+            responses["update_frequency"] = await self.execute_graphql(
+                SEND_SETTING_MUTATION, variables
+            )
+
+        # 2. Energy Saving Mode
         if energy_saving_mode is not None:
-            payload["energy_saving_mode"] = int(energy_saving_mode)
+            op_type = "ACTIVATE" if energy_saving_mode else "DEACTIVATE"
 
-        return await self.post_with_refresh(
-            KIPPYMAP_MODIFY_SETTINGS_PATH, payload, REQUEST_HEADERS
-        )
+            variables = {
+                "setting": {
+                    "operationType": op_type,
+                    "settingType": "ENERGY_SAVING_ZONE",
+                    "deviceId": str(kippy_id),
+                    "modeType": "SENTINEL",
+                }
+            }
+
+            responses["energy_saving_mode"] = await self.execute_graphql(
+                SEND_SETTING_MUTATION, variables
+            )
+
+        return responses

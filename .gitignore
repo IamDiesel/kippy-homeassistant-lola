@@ -8,3 +8,6 @@ __pycache__/
 dev-config/
 .secrets/
 *.apk
+.devcontainer/devcontainer-lock.json
+kippy/icon.png
+kippy/manifest.json

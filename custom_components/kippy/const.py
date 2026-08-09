@@ -1,3 +1,4 @@
+# const.py
 """Constants for the Kippy integration."""
 
 import json
@@ -20,6 +21,7 @@ PLATFORMS: list[str] = [
     "switch",
     "binary_sensor",
     "button",
+    "date",
 ]
 
 # API endpoints.

@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import logging
+import os
 from typing import Any, Awaitable
 
+import voluptuous as vol
 from aiohttp import ClientResponseError
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import aiohttp_client
+from homeassistant.helpers import config_validation as cv
 
 from .api import KippyApi
 from .const import DOMAIN, PLATFORMS
@@ -29,6 +34,8 @@ from .helpers import (
     is_pet_subscription_active,
     normalize_kippy_identifier,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -95,6 +102,93 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+
+    # --- Start des neuen Custom Services ---
+    async def handle_export_history(call: ServiceCall):
+        """Exportiert die GPS Historie als GeoJSON Datei."""
+        pet_id = call.data.get("pet_id")
+        from_date = call.data.get("from_date")
+        to_date = call.data.get("to_date")
+
+        _LOGGER.info(
+            "Exportiere Kippy Route für Pet %s von %s bis %s",
+            pet_id,
+            from_date,
+            to_date,
+        )
+
+        # 1. Daten abrufen
+        positions = await api.get_positions_history(pet_id, from_date, to_date)
+
+        # 2. Wegpunkte filtern und konvertieren
+        coords = []
+        for pos in reversed(
+            positions
+        ):  # Wir drehen die Liste um, falls AWS vom neusten zum ältesten sortiert
+            # Standby-Pings ("SKIP") und Null-Koordinaten ignorieren
+            if pos.get("positionType") == "SKIP" or pos.get("isSkip"):
+                continue
+
+            lat = pos.get("lat")
+            lng = pos.get("lng")
+            if not lat or not lng:
+                continue
+
+            # Ausreißer ignorieren (alles über 100m Ungenauigkeit wird gefiltert)
+            if pos.get("radius", 999) > 100:
+                continue
+
+            # WICHTIG: GeoJSON erwartet das Format [Longitude, Latitude]!
+            coords.append([lng, lat])
+
+        if not coords:
+            _LOGGER.warning(
+                "Keine gültigen Kippy-Wegpunkte in diesem Zeitraum gefunden."
+            )
+            return
+
+        # 3. GeoJSON Struktur aufbauen
+        geojson_data = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": coords},
+                    "properties": {
+                        "name": "Lolas Route",
+                        "stroke": "#FF0000",
+                        "stroke-width": 4,
+                    },
+                }
+            ],
+        }
+
+        # 4. In den /config/www/ Ordner schreiben
+        www_dir = hass.config.path("www")
+        os.makedirs(www_dir, exist_ok=True)
+        # Wir speichern die Datei pro Pet ab, falls du mal einen zweiten Kippy kaufst
+        file_path = os.path.join(www_dir, f"kippy_history_{pet_id}.geojson")
+
+        def write_file():
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(geojson_data, f)
+
+        await hass.async_add_executor_job(write_file)
+        _LOGGER.info("GeoJSON Datei erfolgreich unter %s gespeichert.", file_path)
+
+    hass.services.async_register(
+        DOMAIN,
+        "export_history",
+        handle_export_history,
+        schema=vol.Schema(
+            {
+                vol.Required("pet_id"): cv.string,
+                vol.Required("from_date"): cv.string,
+                vol.Required("to_date"): cv.string,
+            }
+        ),
+    )
+    # --- Ende des neuen Custom Services ---
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

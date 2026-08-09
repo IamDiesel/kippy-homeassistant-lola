@@ -86,9 +86,9 @@ class KippyMapEndpoint(BaseKippyApi):
 
         command_sent = False
 
-        # 2. Kommando & Keep-Alive Logik basierend auf echtem App-Verhalten
+        # 2. Kommando & Keep-Alive Logik
         if app_action == 2:
-            # START: Sende LIVE_TRACKING Befehl UND den ersten Herzschlag
+            # START: Sende LIVE_TRACKING Befehl und Herzschlag
             await self.execute_graphql(
                 SEND_COMMAND_MUTATION,
                 {
@@ -105,14 +105,14 @@ class KippyMapEndpoint(BaseKippyApi):
             command_sent = True
 
         elif app_action == 1:
-            # STOP: Laut App-Log wird hier der offizielle WAKEUP-Befehl gesendet,
-            # welcher das Tracking beendet, sobald kein Keep-Alive mehr kommt.
+            # STOP: Sende LIVE_TRACKING mit duration: 0 zum Beenden!
             await self.execute_graphql(
                 SEND_COMMAND_MUTATION,
                 {
                     "command": {
-                        "commandType": "WAKEUP",
+                        "commandType": "LIVE_TRACKING",
                         "id": str(kippy_id),
+                        "duration": 0,
                         "modeType": "SENTINEL",
                     }
                 },
@@ -122,12 +122,12 @@ class KippyMapEndpoint(BaseKippyApi):
         else:
             # NORMALES POLLING
             if live_tracking_state in ("ON", "REQUESTED"):
-                # Während Live-Tracking läuft: Halte die Session via Herzschlag offen
+                # Während Live-Tracking aktiv ist: Herzschlag aufrechterhalten
                 await self.execute_graphql(
                     APP_KEEP_ALIVE_MUTATION, {"productIds": [str(kippy_id)]}
                 )
             else:
-                # Im Idle: Ganz normaler Wakeup für periodische Standort-Abfragen
+                # Im Idle: Ganz normaler WAKEUP für periodische Updates
                 await self.execute_graphql(
                     SEND_COMMAND_MUTATION,
                     {
