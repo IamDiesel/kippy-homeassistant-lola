@@ -204,7 +204,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> bo
         data = entry.runtime_data
         if data is not None:
             for timer in data.activity_timers.values():
-
                 timer.async_cancel()
             shutdown_tasks: list[Awaitable[Any]] = []
 

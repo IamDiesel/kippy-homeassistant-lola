@@ -1,68 +1,63 @@
 # Kippy for Home Assistant
 
-[![GitHub Repo stars][stars-shield]][stars]
 [![GitHub Release][releases-shield]][releases]
 [![License][license-shield]](LICENSE)
-[![Community Forum][community-shield]][community]
 [![hacs][hacsbadge]][hacs]
-[![GitHub Activity][commits-shield]][commits]
-[![Project Maintenance][maintenance-shield]][user_profile]
-[![BuyMeACoffee][bmc-shield]][bmc]
 
 Integrate [Kippy](https://www.kippy.eu/) pet trackers with Home Assistant. Track your pet's location, monitor activity and battery levels, and control tracker features directly from your smart home dashboard.
 
-This integration has been built to support Kippy Cat. It'll probably work with Kippy Evo and Kippy Dog, though I don't have either of these to test with. I'd appreciate some others testing to work out the kinks.
+> ⚠️ **Disclaimer: Unofficial Integration**
+> This is an unofficial, community-driven, open-source project. It is **not** affiliated with, endorsed by, sponsored by, or connected to Kippy srl in any way. "Kippy" and any related trademarks are the property of their respective owners. This integration uses an undocumented API, which means it could break or change at any time. Use this software at your own risk.
+
+> **Credits & Acknowledgments**
+> This project originally started as a fork of the great work done by [ThomasHFWright/kippy-homeassistant](https://github.com/ThomasHFWright/kippy-homeassistant). However, as the Kippy backend infrastructure evolved, this repository diverged significantly into a standalone project. It features a completely rewritten, robust GraphQL API client and has been heavily refactored to comply with modern, strict Home Assistant architectural guidelines (e.g., removing user-configurable polling, implementing `runtime_data`, and enforcing strict entity naming). Huge thanks to Thomas for providing the initial spark and foundation!
+
+**Please note:** This is a hobby project. It was specifically written and tested for the **Kippy Cat** tracker to keep an eye on our cat Lola. It will likely work with Kippy Evo and Kippy Dog, but since I don't own these devices, I cannot test them.
 
 ## Features
 
-1. Creates a device tracker per Kippy in your account.
-2. Retrieve location updates with different rates for idle/live tracking.
-3. Enable/disable live tracking
-4. Enable/disable energy saving mode
-5. Fetch activity stats
+1. Creates a `device_tracker` per Kippy in your account.
+2. Retrieves location updates with different, dynamically managed rates for idle and live tracking.
+3. Enable/disable live tracking.
+4. Enable/disable energy saving mode.
+5. Fetch daily activity stats (steps, sleep, calories, etc.).
+6. **New:** Download historical GPS routes for specific days as a `.geojson` file directly to your Home Assistant `www/` folder (perfect for custom map cards).
+7. **New:** Fully compliant with strict Home Assistant architecture guidelines (backend polling is handled programmatically, not via user config).
 
 ## Installation
 
+### Via [HACS](https://hacs.xyz/) (Recommended)
+
+1. Open HACS in your Home Assistant instance.
+2. Click the three dots in the top right corner and select **Custom repositories**.
+3. Add `https://github.com/IamDiesel/kippy-homeassistant-lola` and select **Integration** as the category.
+4. Search for "Kippy" in HACS, download the integration, and restart Home Assistant.
+
 ### Manually
 
-Get the folder `custom_components/kippy` in your HA `config/custom_components`
-
-### Via [HACS](https://hacs.xyz/)
-
-<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=ThomasHFWright&repository=kippy-homeassistant&category=integration" target="_blank"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
+Copy the `custom_components/kippy` folder from this repository into your Home Assistant `config/custom_components` directory and restart Home Assistant.
 
 ## Configuration
 
-1. <a href="https://my.home-assistant.io/redirect/config_flow_start/?domain=kippy" target="_blank"><img src="https://my.home-assistant.io/badges/config_flow_start.svg" alt="Open your Home Assistant instance and start setting up a new integration." /></a>
-2. Sign in with your Kippy credentials and choose the trackers to import.
+1. Go to **Settings -> Devices & Services** in Home Assistant.
+2. Click **Add Integration** and search for **Kippy**.
+3. Sign in with your Kippy credentials. The integration will automatically discover and import your trackers.
 
-## Usage
+## Usage & UI
 
-Check out the [wiki](https://github.com/ThomasHFWright/kippy-homeassistant/wiki) for what all the settings mean and all available returned data.
+All controls and sensors are automatically grouped under the Kippy device in Home Assistant.
+To export a historical route, simply select the start and end date using the provided calendar controls in the "Diagnostics" section of the device and press the "Download History Route" button. The resulting `kippy_history_<id>.geojson` file can be visualized using custom Lovelace cards like the `ha-map-card`.
 
-## Contributions are welcome!
+## Contributing
 
-Contributions are welcome! Please open an issue or pull request with improvements.
+Contributions are very welcome! Since this is a hobby project, any help in maintaining the code, adding features, or ensuring compatibility with Kippy Evo/Dog is greatly appreciated.
 
-In particular I could use some help trying to load historical activity data. The activity data only refreshes on Kippy's server as and when the Kippy tracker runs its location update schedule, ranging from every 1hr to every 24 hours. The Activity API can return previous days' data, but I can't figure a way to store it, so activity data only stores the current day's data up to the time the most recent GPS update timer runs.
-
-Running `python script/hassfest --integration-path custom_components/kippy` and `pytest ./tests --cov=custom_components.kippy --cov-report term-missing` locally before submitting helps keep the project healthy.
+Please open an issue or pull request if you want to contribute. Running `python script/hassfest --integration-path custom_components/kippy` and checking against `flake8` / `black` locally before submitting helps keep the project healthy.
 
 ---
 
-[commits-shield]: https://img.shields.io/github/commit-activity/y/ThomasHFWright/kippy-homeassistant.svg
-[commits]: https://github.com/ThomasHFWright/kippy-homeassistant/commits/main
 [hacs]: https://hacs.xyz
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg
-[license-shield]: https://img.shields.io/github/license/ThomasHFWright/kippy-homeassistant.svg
-[maintenance-shield]: https://img.shields.io/badge/maintainer-%40ThomasHFWright-blue.svg
-[releases-shield]: https://img.shields.io/github/v/release/ThomasHFWright/kippy-homeassistant.svg
-[community-shield]: https://img.shields.io/badge/community-forum-blue.svg
-[community]: https://community.home-assistant.io/t/kippy-pet-gps-tracker-custom-integration/933073
-[releases]: https://github.com/ThomasHFWright/kippy-homeassistant/releases
-[user_profile]: https://github.com/ThomasHFWright
-[integration_blueprint]: https://github.com/custom-components/integration_blueprint
-[stars-shield]: https://img.shields.io/github/stars/ThomasHFWright/kippy-homeassistant.svg
-[stars]: https://github.com/ThomasHFWright/kippy-homeassistant/stargazers
-[bmc-shield]: https://img.shields.io/badge/Buy%20Me%20a%20Coffee-donate-yellow.svg?logo=buy-me-a-coffee
-[bmc]: https://buymeacoffee.com/thomashfwright
+[license-shield]: https://img.shields.io/github/license/IamDiesel/kippy-homeassistant-lola.svg
+[releases-shield]: https://img.shields.io/github/v/release/IamDiesel/kippy-homeassistant-lola.svg
+[releases]: https://github.com/IamDiesel/kippy-homeassistant-lola/releases

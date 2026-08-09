@@ -1,12 +1,13 @@
 {
   "domain": "kippy",
   "name": "Kippy",
-  "codeowners": ["@ThomasHFWright"],
+  "codeowners": ["@IamDiesel"],
   "config_flow": true,
-  "documentation": "https://github.com/ThomasHFWright/kippy-homeassistant/wiki",
+  "documentation": "https://github.com/IamDiesel/kippy-homeassistant-lola",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/ThomasHFWright/kippy-homeassistant/issues",
+  "issue_tracker": "https://github.com/IamDiesel/kippy-homeassistant-lola/issues",
+  "quality_scale": "bronze",
   "requirements": [],
   "version": "1.0.4"
 }
