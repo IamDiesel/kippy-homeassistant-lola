@@ -49,7 +49,8 @@ class KippyGpsDefaultSwitch(KippyPetEntity, SwitchEntity):
         self, coordinator: KippyDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        self._attr_name = "GPS Activation"
+        pet_name = pet.get("petName")
+        self._attr_name = f"{pet_name} GPS Activation" if pet_name else "GPS Activation"
         self._attr_unique_id = f"{self._pet_id}_gps_on_default"
         self._attr_translation_key = "gps_on_default"
 
@@ -102,7 +103,8 @@ class KippyEnergySavingSwitch(KippyPetEntity, SwitchEntity):
         map_coordinator: KippyMapDataUpdateCoordinator,
     ) -> None:
         super().__init__(coordinator, pet)
-        self._attr_name = "Energy Saving"
+        pet_name = pet.get("petName")
+        self._attr_name = f"{pet_name} Energy Saving" if pet_name else "Energy Saving"
         self._attr_unique_id = f"{self._pet_id}_energy_saving"
         self._map_coordinator = map_coordinator
         self.async_on_remove(
@@ -179,8 +181,10 @@ class KippyLiveTrackingSwitch(KippyMapEntity, SwitchEntity):
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        self._attr_name = "Live tracking"
+        pet_name = pet.get("petName")
+        self._attr_name = f"{pet_name} Live tracking" if pet_name else "Live tracking"
         self._attr_unique_id = f"{self._pet_id}_live_tracking"
+        self._pet_name = pet_name
         self._attr_translation_key = "live_tracking"
 
     @property
