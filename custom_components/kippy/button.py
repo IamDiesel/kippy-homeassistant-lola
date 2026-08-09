@@ -8,7 +8,7 @@ import os
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
@@ -18,28 +18,23 @@ from homeassistant.helpers.entity import EntityCategory
 from .const import DOMAIN
 from .coordinator import (
     KippyActivityCategoriesDataUpdateCoordinator,
-    KippyDataUpdateCoordinator,
     KippyMapDataUpdateCoordinator,
 )
 from .entity import KippyMapEntity
 from .helpers import build_device_info
+from .models import KippyConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant, entry: KippyConfigEntry, async_add_entities
 ) -> None:
     """Set up Kippy button entities."""
-    data = hass.data[DOMAIN][entry.entry_id]
-    coordinator: KippyDataUpdateCoordinator = data["coordinator"]
-    map_coordinators: dict[int, KippyMapDataUpdateCoordinator] = data[
-        "map_coordinators"
-    ]
-    activity_coordinator: KippyActivityCategoriesDataUpdateCoordinator = data[
-        "activity_coordinator"
-    ]
-    api = data["api"]
+    coordinator = entry.runtime_data.coordinator
+    map_coordinators = entry.runtime_data.map_coordinators
+    activity_coordinator = entry.runtime_data.activity_coordinator
+    api = entry.runtime_data.api
 
     entities: list[ButtonEntity] = [KippyRefreshPetsButton(hass, entry)]
 
@@ -115,7 +110,7 @@ class KippyRefreshPetsButton(ButtonEntity):
 
     _attr_has_entity_name = True
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+    def __init__(self, hass: HomeAssistant, entry: KippyConfigEntry) -> None:
         self.hass = hass
         self.entry = entry
         self._attr_name = "Refresh Pets"

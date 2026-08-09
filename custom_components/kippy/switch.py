@@ -5,14 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import EntityCategory
 
 from .const import (
     APP_ACTION,
-    DOMAIN,
     LOCALIZATION_TECHNOLOGY_LBS,
     OPERATING_STATUS,
     OPERATING_STATUS_MAP,
@@ -21,14 +19,15 @@ from .const import (
 from .coordinator import KippyDataUpdateCoordinator, KippyMapDataUpdateCoordinator
 from .entity import KippyMapEntity, KippyPetEntity
 from .helpers import is_pet_subscription_active, normalize_kippy_identifier
+from .models import KippyConfigEntry
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant, entry: KippyConfigEntry, async_add_entities
 ) -> None:
     """Set up Kippy switch entities."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    map_coordinators = hass.data[DOMAIN][entry.entry_id]["map_coordinators"]
+    coordinator = entry.runtime_data.coordinator
+    map_coordinators = entry.runtime_data.map_coordinators
     entities: list[SwitchEntity] = []
     for pet in coordinator.data.get("pets", []):
         if not is_pet_subscription_active(pet):
@@ -50,8 +49,7 @@ class KippyGpsDefaultSwitch(KippyPetEntity, SwitchEntity):
         self, coordinator: KippyDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = f"{pet_name} GPS Activation" if pet_name else "GPS Activation"
+        self._attr_name = "GPS Activation"
         self._attr_unique_id = f"{self._pet_id}_gps_on_default"
         self._attr_translation_key = "gps_on_default"
 
@@ -104,8 +102,7 @@ class KippyEnergySavingSwitch(KippyPetEntity, SwitchEntity):
         map_coordinator: KippyMapDataUpdateCoordinator,
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = f"{pet_name} Energy Saving" if pet_name else "Energy Saving"
+        self._attr_name = "Energy Saving"
         self._attr_unique_id = f"{self._pet_id}_energy_saving"
         self._map_coordinator = map_coordinator
         self.async_on_remove(
@@ -182,10 +179,8 @@ class KippyLiveTrackingSwitch(KippyMapEntity, SwitchEntity):
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = f"{pet_name} Live tracking" if pet_name else "Live tracking"
+        self._attr_name = "Live tracking"
         self._attr_unique_id = f"{self._pet_id}_live_tracking"
-        self._pet_name = pet_name
         self._attr_translation_key = "live_tracking"
 
     @property
@@ -264,12 +259,7 @@ class KippyIgnoreLBSSwitch(KippyMapEntity, SwitchEntity):
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        self._pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{self._pet_name} Ignore {LOCALIZATION_TECHNOLOGY_LBS} updates"
-            if self._pet_name
-            else f"Ignore {LOCALIZATION_TECHNOLOGY_LBS} updates"
-        )
+        self._attr_name = f"Ignore {LOCALIZATION_TECHNOLOGY_LBS} updates"
         self._attr_unique_id = f"{self._pet_id}_ignore_lbs"
         self._attr_translation_key = "ignore_lbs_updates"
         self._attr_entity_category = EntityCategory.CONFIG

@@ -6,25 +6,23 @@ import logging
 from datetime import date
 
 from homeassistant.components.date import DateEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DOMAIN
 from .helpers import build_device_info
+from .models import KippyConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: KippyConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Kippy date entities."""
-    data = hass.data[DOMAIN][entry.entry_id]
-    coordinator = data["coordinator"]
+    coordinator = entry.runtime_data.coordinator
 
     entities = []
     for pet in coordinator.data.get("pets", []):

@@ -11,7 +11,6 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfLength, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -21,7 +20,7 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util.location import distance as location_distance
 from homeassistant.util.unit_conversion import DistanceConverter, DurationConverter
 
-from .const import DOMAIN, LABEL_EXPIRED, LOCALIZATION_TECHNOLOGY_GPS, PET_KIND_TO_TYPE
+from .const import LABEL_EXPIRED, LOCALIZATION_TECHNOLOGY_GPS, PET_KIND_TO_TYPE
 from .coordinator import (
     KippyActivityCategoriesDataUpdateCoordinator,
     KippyDataUpdateCoordinator,
@@ -29,6 +28,7 @@ from .coordinator import (
 )
 from .entity import KippyMapEntity, KippyPetEntity
 from .helpers import build_device_info, is_pet_subscription_active, update_pet_data
+from .models import KippyConfigEntry
 
 _TIME_UNITS = {
     UnitOfTime.MICROSECONDS,
@@ -42,14 +42,12 @@ _TIME_UNITS = {
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant, entry: KippyConfigEntry, async_add_entities
 ) -> None:
     """Set up Kippy sensors."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    map_coordinators = hass.data[DOMAIN][entry.entry_id]["map_coordinators"]
-    activity_coordinator: KippyActivityCategoriesDataUpdateCoordinator = hass.data[
-        DOMAIN
-    ][entry.entry_id]["activity_coordinator"]
+    coordinator = entry.runtime_data.coordinator
+    map_coordinators = entry.runtime_data.map_coordinators
+    activity_coordinator = entry.runtime_data.activity_coordinator
 
     entities: list[SensorEntity] = []
     for pet in coordinator.data.get("pets", []):
@@ -106,10 +104,7 @@ class KippyExpiredDaysSensor(_KippyBaseEntity):
         self, coordinator: KippyDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{pet_name} Days Until Expiry" if pet_name else "Days Until Expiry"
-        )
+        self._attr_name = "Days Until Expiry"
         self._attr_unique_id = f"{self._pet_id}_expired_days"
         self._source_unit = UnitOfTime.DAYS
 
@@ -155,8 +150,7 @@ class KippyPetTypeSensor(_KippyBaseEntity):
         self, coordinator: KippyDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = f"{pet_name} Type" if pet_name else "Pet Type"
+        self._attr_name = "Pet Type"
         self._attr_unique_id = f"{self._pet_id}_type"
         self._attr_translation_key = "pet_type"
 
@@ -173,8 +167,7 @@ class KippyIDSensor(_KippyBaseEntity):
         self, coordinator: KippyDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = f"{pet_name} Kippy ID" if pet_name else "Kippy ID"
+        self._attr_name = "Kippy ID"
         self._attr_unique_id = f"{self._pet_id}_kippy_id"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -190,8 +183,7 @@ class KippyIMEISensor(_KippyBaseEntity):
         self, coordinator: KippyDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = f"{pet_name} IMEI" if pet_name else "IMEI"
+        self._attr_name = "IMEI"
         self._attr_unique_id = f"{self._pet_id}_imei"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -227,10 +219,7 @@ class _KippyActivitySensor(
         self._pet_id = pet["petID"]
         self._pet_data = pet
         self._description = description
-        pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{pet_name} {description.name}" if pet_name else description.name
-        )
+        self._attr_name = description.name
         self._attr_unique_id = f"{self._pet_id}_{description.metric}"
         if description.device_class:
             self._attr_device_class = description.device_class
@@ -629,8 +618,7 @@ class KippyBatterySensor(_KippyBaseMapEntity):
         super().__init__(coordinator, pet)
         self._pet_id = pet["petID"]
         self._pet_data = pet
-        pet_name = pet.get("petName")
-        self._attr_name = f"{pet_name} Battery Level" if pet_name else "Battery Level"
+        self._attr_name = "Battery Level"
         self._attr_unique_id = f"{self._pet_id}_battery"
         self._attr_device_class = SensorDeviceClass.BATTERY
         self._attr_native_unit_of_measurement = PERCENTAGE
@@ -656,12 +644,7 @@ class KippyLocalizationTechnologySensor(_KippyBaseMapEntity):
         super().__init__(coordinator, pet)
         self._pet_id = pet["petID"]
         self._pet_data = pet
-        pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{pet_name} Localization Technology"
-            if pet_name
-            else "Localization Technology"
-        )
+        self._attr_name = "Localization Technology"
         self._attr_unique_id = f"{self._pet_id}_localization_technology"
 
     @property
@@ -680,8 +663,7 @@ class KippyLastContactSensor(_KippyBaseMapEntity):
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = f"{pet_name} Last Contact" if pet_name else "Last Contact"
+        self._attr_name = "Last Contact"
         self._attr_unique_id = f"{self._pet_id}_last_contact"
         self._attr_device_class = SensorDeviceClass.TIMESTAMP
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -709,8 +691,7 @@ class KippyNextContactSensor(_KippyBaseMapEntity):
         self.async_on_remove(
             base_coordinator.async_add_listener(self._handle_base_update)
         )
-        pet_name = pet.get("petName")
-        self._attr_name = f"{pet_name} Next Contact" if pet_name else "Next Contact"
+        self._attr_name = "Next Contact"
         self._attr_unique_id = f"{self._pet_id}_next_contact"
 
     def _handle_base_update(self) -> None:
@@ -744,8 +725,7 @@ class KippyLastFixSensor(_KippyBaseMapEntity):
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = f"{pet_name} Last Fix" if pet_name else "Last Fix"
+        self._attr_name = "Last Fix"
         self._attr_unique_id = f"{self._pet_id}_last_fix"
         self._attr_device_class = SensorDeviceClass.TIMESTAMP
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -762,12 +742,7 @@ class KippyLastGpsFixSensor(_KippyBaseMapEntity):
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{pet_name} Last {LOCALIZATION_TECHNOLOGY_GPS} Fix"
-            if pet_name
-            else f"Last {LOCALIZATION_TECHNOLOGY_GPS} Fix"
-        )
+        self._attr_name = f"Last {LOCALIZATION_TECHNOLOGY_GPS} Fix"
         self._attr_unique_id = f"{self._pet_id}_last_gps_fix"
         self._attr_device_class = SensorDeviceClass.TIMESTAMP
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -784,8 +759,7 @@ class KippyLastLbsFixSensor(_KippyBaseMapEntity):
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = f"{pet_name} Last LBS Fix" if pet_name else "Last LBS Fix"
+        self._attr_name = "Last LBS Fix"
         self._attr_unique_id = f"{self._pet_id}_last_lbs_fix"
         self._attr_device_class = SensorDeviceClass.TIMESTAMP
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -802,12 +776,7 @@ class KippyOperatingStatusSensor(_KippyBaseMapEntity):
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        self._pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{self._pet_name} Operating Status"
-            if self._pet_name
-            else "Operating Status"
-        )
+        self._attr_name = "Operating Status"
         self._attr_unique_id = f"{self._pet_id}_operating_status"
         self._attr_translation_key = "operating_status"
 
@@ -829,10 +798,7 @@ class KippyEnergySavingStatusSensor(_KippyBaseEntity):
         self, coordinator: KippyDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{pet_name} Energy Saving Status" if pet_name else "Energy Saving Status"
-        )
+        self._attr_name = "Energy Saving Status"
         self._attr_unique_id = f"{self._pet_id}_energy_saving_status"
 
     @property
@@ -859,10 +825,7 @@ class KippyHomeDistanceSensor(_KippyBaseMapEntity):
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{pet_name} Distance from Home" if pet_name else "Distance from Home"
-        )
+        self._attr_name = "Distance from Home"
         self._attr_unique_id = f"{self._pet_id}_distance_from_home"
 
     @property

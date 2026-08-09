@@ -5,14 +5,12 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from homeassistant.components.number import NumberEntity, NumberMode
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    DOMAIN,
     LOCALIZATION_TECHNOLOGY_GPS,
     MAX_DEVICE_UPDATE_INTERVAL_MINUTES,
     MIN_DEVICE_UPDATE_INTERVAL_MINUTES,
@@ -32,17 +30,18 @@ from .helpers import (
     normalize_device_update_interval,
     normalize_kippy_identifier,
 )
+from .models import KippyConfigEntry
 
 SYNC_VALUE_ERROR = "Synchronous updates are not supported; use async_set_native_value."
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant, entry: KippyConfigEntry, async_add_entities
 ) -> None:
     """Set up Kippy number entities."""
-    base_coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    map_coordinators = hass.data[DOMAIN][entry.entry_id]["map_coordinators"]
-    activity_timers = hass.data[DOMAIN][entry.entry_id]["activity_timers"]
+    base_coordinator = entry.runtime_data.coordinator
+    map_coordinators = entry.runtime_data.map_coordinators
+    activity_timers = entry.runtime_data.activity_timers
     entities: list[NumberEntity] = [KippyDeviceUpdateFrequencyNumber(base_coordinator)]
     for pet in base_coordinator.data.get("pets", []):
         if is_pet_subscription_active(pet):
@@ -105,7 +104,7 @@ class KippyDeviceUpdateFrequencyNumber(
             self._unsub_options = None
 
     async def _async_options_updated(
-        self, _hass: HomeAssistant, entry: ConfigEntry
+        self, _hass: HomeAssistant, entry: KippyConfigEntry
     ) -> None:
         """Handle config entry option updates."""
 
@@ -222,10 +221,7 @@ class KippyIdleUpdateFrequencyNumber(KippyMapEntity, NumberEntity):
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{pet_name} Idle update frequency" if pet_name else "Idle update frequency"
-        )
+        self._attr_name = "Idle update frequency"
         self._attr_unique_id = f"{self._pet_id}_idle_refresh_time"
         self._attr_translation_key = "idle_refresh_time"
 
@@ -258,10 +254,7 @@ class KippyLiveUpdateFrequencyNumber(KippyMapEntity, NumberEntity):
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{pet_name} Live update frequency" if pet_name else "Live update frequency"
-        )
+        self._attr_name = "Live update frequency"
         self._attr_unique_id = f"{self._pet_id}_live_refresh_time"
         self._attr_translation_key = "live_refresh_time"
 
@@ -294,12 +287,7 @@ class KippyActivityRefreshDelayNumber(NumberEntity):
         self.timer = timer
         self._pet_id = pet["petID"]
         self._pet_data = pet
-        pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{pet_name} Activity refresh delay"
-            if pet_name
-            else "Activity refresh delay"
-        )
+        self._attr_name = "Activity refresh delay"
         self._attr_unique_id = f"{self._pet_id}_activity_refresh_delay"
 
     @property

@@ -5,20 +5,20 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.device_tracker import SourceType, TrackerEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, LABEL_EXPIRED, PET_KIND_TO_TYPE
+from .const import LABEL_EXPIRED, PET_KIND_TO_TYPE
 from .coordinator import KippyMapDataUpdateCoordinator
 from .entity import KippyMapEntity
+from .models import KippyConfigEntry
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant, entry: KippyConfigEntry, async_add_entities
 ) -> None:
     """Set up Kippy device trackers."""
-    base_coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    map_coordinators = hass.data[DOMAIN][entry.entry_id]["map_coordinators"]
+    base_coordinator = entry.runtime_data.coordinator
+    map_coordinators = entry.runtime_data.map_coordinators
 
     entities = [
         KippyPetTracker(map_coord, pet)
@@ -36,8 +36,7 @@ class KippyPetTracker(KippyMapEntity, TrackerEntity):
     ) -> None:
         """Initialize the tracker entity."""
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = f"Kippy {pet_name}" if pet_name else "Kippy"
+        self._attr_name = None
         self._attr_unique_id = pet["petID"]
         self._pet_data = dict(pet)
         self._attr_entity_picture = pet.get("imageCloudURL")

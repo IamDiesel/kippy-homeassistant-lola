@@ -5,19 +5,18 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
 from .coordinator import KippyDataUpdateCoordinator
 from .entity import KippyPetEntity
+from .models import KippyConfigEntry
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant, entry: KippyConfigEntry, async_add_entities
 ) -> None:
     """Set up Kippy binary sensors."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    coordinator = entry.runtime_data.coordinator
     entities: list[BinarySensorEntity] = []
     for pet in coordinator.data.get("pets", []):
         entities.append(KippyFirmwareUpgradeAvailableBinarySensor(coordinator, pet))
@@ -31,12 +30,7 @@ class KippyFirmwareUpgradeAvailableBinarySensor(KippyPetEntity, BinarySensorEnti
         self, coordinator: KippyDataUpdateCoordinator, pet: dict[str, Any]
     ) -> None:
         super().__init__(coordinator, pet)
-        pet_name = pet.get("petName")
-        self._attr_name = (
-            f"{pet_name} Firmware Upgrade available"
-            if pet_name
-            else "Firmware Upgrade available"
-        )
+        self._attr_name = "Firmware Upgrade available"
         self._attr_unique_id = f"{self._pet_id}_firmware_upgrade"
         self._attr_translation_key = "firmware_upgrade_available"
 

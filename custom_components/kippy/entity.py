@@ -14,6 +14,7 @@ from .helpers import build_device_info, update_pet_data
 class KippyPetEntity(CoordinatorEntity[KippyDataUpdateCoordinator]):
     """Base entity for pet-specific coordinator data."""
 
+    _attr_has_entity_name = True
     _preserve_fields: Sequence[str] = ()
 
     def __init__(
@@ -39,6 +40,8 @@ class KippyPetEntity(CoordinatorEntity[KippyDataUpdateCoordinator]):
 
 class KippyMapEntity(CoordinatorEntity[KippyMapDataUpdateCoordinator]):
     """Base entity for map coordinator data."""
+
+    _attr_has_entity_name = True
 
     def __init__(
         self, coordinator: KippyMapDataUpdateCoordinator, pet: dict[str, Any]
