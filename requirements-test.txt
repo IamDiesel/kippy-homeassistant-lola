@@ -12,3 +12,4 @@ python-dotenv
 pylint
 tqdm
 ruff
+pycares==4.9.0

@@ -15,3 +15,9 @@ disable = [
     "no-member",
     "duplicate-code",
 ]
+
+[tool.ruff]
+exclude = ["AGENTS.md"]
+
+[tool.ruff.lint]
+ignore = ["RUF100", "UP031", "DTZ001", "SIM117"]
