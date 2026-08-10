@@ -199,7 +199,7 @@ async def test_history_export_button_success() -> None:
     api.get_positions_history.assert_called_once_with(
         1, "2026-08-10T00:00:00.000Z", "2026-08-10T23:59:59.999Z"
     )
-    pass
+    # pass
 
     # Ensure sync methods raise NotImplementedError
     with pytest.raises(NotImplementedError):
