@@ -75,8 +75,8 @@ class KippyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.debug("Unexpected runtime error during login: %s", err)
                 errors["base"] = "unknown"
             # pylint: disable-next=broad-exception-caught
-            except Exception as err:
-                _LOGGER.exception("Unexpected error during login: %s", err)
+            except Exception:
+                _LOGGER.exception("Unexpected error during login")
                 errors["base"] = "unknown"
             else:
                 return self.async_create_entry(
