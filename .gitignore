@@ -11,3 +11,4 @@ dev-config/
 .devcontainer/devcontainer-lock.json
 kippy/icon.png
 kippy/manifest.json
+.coverage

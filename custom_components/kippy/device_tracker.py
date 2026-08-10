@@ -37,7 +37,7 @@ class KippyPetTracker(KippyMapEntity, TrackerEntity):
         """Initialize the tracker entity."""
         super().__init__(coordinator, pet)
         self._attr_name = None
-        self._attr_unique_id = pet["petID"]
+        self._attr_unique_id = str(pet["petID"])
         self._pet_data = dict(pet)
         self._attr_entity_picture = pet.get("imageCloudURL")
 
