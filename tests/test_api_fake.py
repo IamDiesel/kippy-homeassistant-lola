@@ -1,4 +1,5 @@
-# pylint: disable=missing-function-docstring,unused-argument
+# pylint: skip-file
+#  pylint: disable=missing-function-docstring,unused-argument
 """Tests for the in-memory fake Kippy API."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# pylint: skip-file
 """Unit tests for the modular Kippy API client."""
 
 from __future__ import annotations

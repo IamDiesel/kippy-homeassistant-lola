@@ -72,3 +72,7 @@ class KippyHistoryDate(DateEntity, RestoreEntity):
         """Update the value from the UI."""
         self._attr_native_value = value
         self.async_write_ha_state()
+
+    def set_value(self, value: date) -> None:
+        """Fallback to satisfy Pylint's abstract method check."""
+        raise NotImplementedError("Synchronous set_value is not supported.")
