@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from aiohttp import ClientSession
+from aiohttp import ClientError, ClientResponseError, ClientSession
 
 from custom_components.kippy.api._base import (
     APPSYNC_ENDPOINT,
@@ -126,3 +126,90 @@ async def test_execute_graphql_token_refresh() -> None:
         # Verify the second call used the new token
         last_call_kwargs = mock_session.post.call_args_list[1][1]
         assert last_call_kwargs["headers"]["Authorization"] == "Bearer new_fresh_token"
+
+
+@pytest.mark.asyncio
+async def test_login_returns_cached_auth() -> None:
+    """Test that login returns cached auth without a second request."""
+    mock_session = AsyncMock(spec=ClientSession)
+
+    api = BaseKippyApi(mock_session)
+    api._auth = {"id_token": "cached_token"}
+
+    result = await api.login("test@example.com", "password")
+
+    assert result == {"id_token": "cached_token"}
+    mock_session.post.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_login_no_authentication_result() -> None:
+    """Test that login raises when no AuthenticationResult is returned."""
+    mock_session = AsyncMock(spec=ClientSession)
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.json.return_value = {}
+    mock_session.post.return_value.__aenter__.return_value = mock_response
+
+    api = BaseKippyApi(mock_session)
+
+    with pytest.raises(ClientResponseError):
+        await api.login("test@example.com", "password")
+
+
+@pytest.mark.asyncio
+async def test_login_client_error() -> None:
+    """Test that login propagates a ClientError."""
+    mock_session = AsyncMock(spec=ClientSession)
+    mock_session.post.return_value.__aenter__.side_effect = ClientError("boom")
+
+    api = BaseKippyApi(mock_session)
+
+    with pytest.raises(ClientError):
+        await api.login("test@example.com", "password")
+
+
+@pytest.mark.asyncio
+async def test_ensure_login_no_credentials() -> None:
+    """Test that ensure_login raises when credentials are missing."""
+    mock_session = AsyncMock(spec=ClientSession)
+
+    api = BaseKippyApi(mock_session)
+
+    with pytest.raises(RuntimeError):
+        await api.ensure_login()
+
+
+@pytest.mark.asyncio
+async def test_close_closes_session() -> None:
+    """Test that close closes the underlying session."""
+    mock_session = AsyncMock(spec=ClientSession)
+
+    api = BaseKippyApi(mock_session)
+    await api.close()
+
+    mock_session.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_execute_graphql_client_error() -> None:
+    """Test that execute_graphql propagates a ClientError."""
+    mock_session = AsyncMock(spec=ClientSession)
+    mock_session.post.return_value.__aenter__.side_effect = ClientError("boom")
+
+    api = BaseKippyApi(mock_session)
+    api._auth = {"id_token": "valid_token"}
+    api._credentials = ("test@example.com", "password")
+
+    with pytest.raises(ClientError):
+        await api.execute_graphql("query { test }")
+
+
+@pytest.mark.asyncio
+async def test_session_property() -> None:
+    """Test the session property returns the underlying session."""
+    mock_session = AsyncMock(spec=ClientSession)
+
+    api = BaseKippyApi(mock_session)
+
+    assert api.session is mock_session

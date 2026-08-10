@@ -208,6 +208,7 @@ class _KippyActivitySensor(
 ):
     """Base class for daily activity sensors."""
 
+    _attr_has_entity_name = True
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(

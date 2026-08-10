@@ -253,8 +253,6 @@ async def _async_build_map_coordinators(
         if pet_id is None:
             continue
         kippy_id = normalize_kippy_identifier(pet, include_pet_id=True)
-        if kippy_id is None:
-            continue
         settings = get_map_refresh_settings(context.config_entry, pet_id)
         map_coordinator = KippyMapDataUpdateCoordinator(
             context, kippy_id, settings=settings

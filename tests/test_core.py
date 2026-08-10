@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from aiohttp import ClientError, ClientResponseError
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -225,3 +226,124 @@ def test_normalize_device_update_interval() -> None:
     assert normalize_device_update_interval(None) is None
     assert normalize_device_update_interval(0) is None
     assert normalize_device_update_interval("abc") is None
+
+
+# --- TEST 9: Config Flow Options ---
+@pytest.mark.asyncio
+async def test_options_flow() -> None:
+    """Test options flow."""
+    entry = MockConfigEntry(
+        domain=DOMAIN, data={CONF_EMAIL: "a", CONF_PASSWORD: "b"}, entry_id="1"
+    )
+    flow = KippyConfigFlow()
+    options_flow = flow.async_get_options_flow(entry)
+
+    # Initial step shows the form
+    result = await options_flow.async_step_init()
+    assert result["type"] == "form"
+    assert result["step_id"] == "init"
+
+    # User inputs a valid value
+    result = await options_flow.async_step_init({"device_update_interval": 30})
+    assert result["type"] == "create_entry"
+    assert result["data"]["device_update_interval"] == 30
+
+    # User inputs an invalid value
+    result = await options_flow.async_step_init({"device_update_interval": "invalid"})
+    assert result["type"] == "form"
+    assert result["errors"] == {"base": "invalid_device_update_interval"}
+
+
+# --- TEST 10: Config Flow Match ---
+def test_is_matching() -> None:
+    """Test is_matching."""
+    flow = KippyConfigFlow()
+    assert flow.is_matching(flow) is True
+    assert flow.is_matching(None) is False
+
+
+@pytest.mark.asyncio
+async def test_config_flow_client_response_error_auth() -> None:
+    """Test config flow ClientResponseError 401."""
+    flow = KippyConfigFlow()
+    flow.hass = MagicMock()
+    with (
+        patch(
+            "custom_components.kippy.config_flow.aiohttp_client.async_get_clientsession"
+        ),
+        patch("custom_components.kippy.config_flow.KippyApi.async_create") as create,
+    ):
+        api = AsyncMock()
+        create.return_value = api
+
+        # We need to simulate a ClientResponseError properly.
+        # Since it's a bit verbose to mock properly, we can just throw it.
+        err = ClientResponseError(request_info=MagicMock(), history=())
+        err.status = 401
+        api.login.side_effect = err
+
+        result = await flow.async_step_user({CONF_EMAIL: "user", CONF_PASSWORD: "pass"})
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": "invalid_auth"}
+
+
+@pytest.mark.asyncio
+async def test_config_flow_client_response_error_other() -> None:
+    """Test config flow ClientResponseError other status."""
+    flow = KippyConfigFlow()
+    flow.hass = MagicMock()
+    with (
+        patch(
+            "custom_components.kippy.config_flow.aiohttp_client.async_get_clientsession"
+        ),
+        patch("custom_components.kippy.config_flow.KippyApi.async_create") as create,
+    ):
+        api = AsyncMock()
+        create.return_value = api
+        err = ClientResponseError(request_info=MagicMock(), history=())
+        err.status = 500
+        api.login.side_effect = err
+
+        result = await flow.async_step_user({CONF_EMAIL: "user", CONF_PASSWORD: "pass"})
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": "cannot_connect"}
+
+
+@pytest.mark.asyncio
+async def test_config_flow_client_error() -> None:
+    """Test config flow ClientError."""
+    flow = KippyConfigFlow()
+    flow.hass = MagicMock()
+    with (
+        patch(
+            "custom_components.kippy.config_flow.aiohttp_client.async_get_clientsession"
+        ),
+        patch("custom_components.kippy.config_flow.KippyApi.async_create") as create,
+    ):
+        api = AsyncMock()
+        create.return_value = api
+        api.login.side_effect = ClientError("Test")
+
+        result = await flow.async_step_user({CONF_EMAIL: "user", CONF_PASSWORD: "pass"})
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": "cannot_connect"}
+
+
+@pytest.mark.asyncio
+async def test_config_flow_runtime_error() -> None:
+    """Test config flow RuntimeError."""
+    flow = KippyConfigFlow()
+    flow.hass = MagicMock()
+    with (
+        patch(
+            "custom_components.kippy.config_flow.aiohttp_client.async_get_clientsession"
+        ),
+        patch("custom_components.kippy.config_flow.KippyApi.async_create") as create,
+    ):
+        api = AsyncMock()
+        create.return_value = api
+        api.login.side_effect = RuntimeError("Test")
+
+        result = await flow.async_step_user({CONF_EMAIL: "user", CONF_PASSWORD: "pass"})
+        assert result["type"] == "form"
+        assert result["errors"] == {"base": "unknown"}

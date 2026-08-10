@@ -1,6 +1,6 @@
 """Tests for Kippy button entities."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntryState
@@ -8,6 +8,7 @@ from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.kippy.button import (
     KippyActivityCategoriesButton,
+    KippyHistoryExportButton,
     KippyRefreshMapAttributesButton,
     KippyRefreshPetsButton,
     async_setup_entry,
@@ -18,6 +19,7 @@ from custom_components.kippy.button import (
 async def test_button_async_setup_entry_creates_entities() -> None:
     """Test if async_setup_entry creates refresh and activity buttons for each pet."""
     hass = MagicMock()
+    hass.async_add_executor_job = AsyncMock()
     entry = MagicMock()
     entry.entry_id = "1"
 
@@ -79,6 +81,7 @@ async def test_refresh_pets_button_press_loaded() -> None:
     """Test pressing the Refresh Pets button
     reloads the config entry when loaded."""
     hass = MagicMock()
+    hass.async_add_executor_job = AsyncMock()
     entry = MagicMock()
     entry.entry_id = "entry_123"
     entry.state = ConfigEntryState.LOADED
@@ -97,6 +100,7 @@ async def test_refresh_pets_button_press_not_loaded() -> None:
     """Test pressing the Refresh Pets button raises
     HomeAssistantError if entry is not loaded."""
     hass = MagicMock()
+    hass.async_add_executor_job = AsyncMock()
     entry = MagicMock()
     entry.entry_id = "entry_123"
     entry.state = ConfigEntryState.NOT_LOADED
@@ -105,3 +109,139 @@ async def test_refresh_pets_button_press_not_loaded() -> None:
 
     with pytest.raises(HomeAssistantError):
         await button.async_press()
+
+
+@pytest.mark.asyncio
+async def test_history_export_button_no_entities() -> None:
+    """Test pressing the History Export button when date entities are missing."""
+    hass = MagicMock()
+    hass.async_add_executor_job = AsyncMock()
+    api = MagicMock()
+    pet = {"petID": 1, "petName": "Lola"}
+
+    # Mock entity registry
+    entity_reg = MagicMock()
+    entity_reg.async_get_entity_id.return_value = None
+
+    with patch(
+        "homeassistant.helpers.entity_registry.async_get", return_value=entity_reg
+    ):
+        button = KippyHistoryExportButton(hass, api, pet)
+        await button.async_press()
+
+    api.get_positions_history.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_history_export_button_no_states() -> None:
+    """Test pressing the History Export button when states are missing."""
+    hass = MagicMock()
+    hass.async_add_executor_job = AsyncMock()
+    api = MagicMock()
+    pet = {"petID": 1, "petName": "Lola"}
+
+    # Mock entity registry
+    entity_reg = MagicMock()
+    entity_reg.async_get_entity_id.return_value = "date.fake"
+    hass.states.get.return_value = None
+
+    with patch(
+        "homeassistant.helpers.entity_registry.async_get", return_value=entity_reg
+    ):
+        button = KippyHistoryExportButton(hass, api, pet)
+        await button.async_press()
+
+    api.get_positions_history.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_history_export_button_success() -> None:
+    """Test pressing the History Export button successfully."""
+    hass = MagicMock()
+    hass.async_add_executor_job = AsyncMock()
+    api = AsyncMock()
+    pet = {"petID": 1, "petName": "Lola"}
+
+    entity_reg = MagicMock()
+    entity_reg.async_get_entity_id.return_value = "date.fake"
+
+    state_mock = MagicMock()
+    state_mock.state = "2026-08-10"
+    hass.states.get.return_value = state_mock
+
+    # Mock return positions
+    api.get_positions_history.return_value = [
+        {"positionType": "GPS", "lat": 1.0, "lng": 2.0, "radius": 50},
+        {
+            "positionType": "WIFI",
+            "lat": 1.1,
+            "lng": 2.1,
+            "radius": 150,
+        },  # Skipped because radius > 100
+        {"positionType": "SKIP", "lat": 1.2, "lng": 2.2},  # Skipped
+        {},  # Skipped missing lat/lng
+    ]
+
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get", return_value=entity_reg
+        ),
+        patch("os.makedirs"),
+        patch("builtins.open", new_callable=MagicMock),
+    ):
+        button = KippyHistoryExportButton(hass, api, pet)
+
+        # Test property
+        assert button.device_info["name"] == "Kippy Lola"
+
+        await button.async_press()
+
+    api.get_positions_history.assert_called_once_with(
+        1, "2026-08-10T00:00:00.000Z", "2026-08-10T23:59:59.999Z"
+    )
+    pass
+
+    # Ensure sync methods raise NotImplementedError
+    with pytest.raises(NotImplementedError):
+        button.press()
+
+
+@pytest.mark.asyncio
+async def test_history_export_button_no_coords() -> None:
+    """Test pressing the History Export button with no valid coords."""
+    hass = MagicMock()
+    hass.async_add_executor_job = AsyncMock()
+    api = AsyncMock()
+    pet = {"petID": 1, "petName": "Lola"}
+
+    entity_reg = MagicMock()
+    entity_reg.async_get_entity_id.return_value = "date.fake"
+    state_mock = MagicMock()
+    state_mock.state = "2026-08-10"
+    hass.states.get.return_value = state_mock
+
+    api.get_positions_history.return_value = []
+
+    with patch(
+        "homeassistant.helpers.entity_registry.async_get", return_value=entity_reg
+    ):
+        button = KippyHistoryExportButton(hass, api, pet)
+        await button.async_press()
+
+    api.get_positions_history.assert_called_once()
+    hass.async_add_executor_job.assert_not_called()
+
+
+# Also add tests for sync press methods
+def test_sync_press_methods():
+    button1 = KippyRefreshMapAttributesButton(MagicMock(), {"petID": 1})
+    with pytest.raises(NotImplementedError):
+        button1.press()
+
+    button2 = KippyActivityCategoriesButton(MagicMock(), {"petID": 1})
+    with pytest.raises(NotImplementedError):
+        button2.press()
+
+    button3 = KippyRefreshPetsButton(MagicMock(), MagicMock())
+    with pytest.raises(NotImplementedError):
+        button3.press()
