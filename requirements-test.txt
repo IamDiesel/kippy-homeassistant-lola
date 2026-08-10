@@ -12,5 +12,5 @@ python-dotenv==1.1.1
 pylint==3.3.8
 tqdm==4.67.1
 ruff==0.12.12
-pycares>=4.5.0
+pycares>=4.4.0
 aiodns>=3.2.0

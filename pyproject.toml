@@ -1,0 +1,17 @@
+[tool.pylint.master]
+ignore = ["tests"]
+
+[tool.pylint.messages_control]
+disable = [
+    "missing-module-docstring",
+    "missing-function-docstring",
+    "too-many-locals",
+    "too-many-statements",
+    "unused-argument",
+    "too-many-instance-attributes",
+    "abstract-method",
+    "too-many-branches",
+    "protected-access",
+    "no-member",
+    "duplicate-code",
+]
