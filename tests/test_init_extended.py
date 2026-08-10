@@ -7,7 +7,10 @@ from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.kippy import _async_build_map_coordinators, async_setup_entry
+from custom_components.kippy import (
+    _async_build_map_coordinators,
+    async_setup_entry,
+)
 from custom_components.kippy.const import DOMAIN
 from custom_components.kippy.coordinator import CoordinatorContext
 
