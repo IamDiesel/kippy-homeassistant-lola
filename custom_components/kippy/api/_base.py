@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import ssl
-from typing import Any, Dict, Optional
+from typing import Any
 
 from aiohttp import ClientError, ClientResponseError, ClientSession
 
@@ -30,11 +30,11 @@ class BaseKippyApi:
     def __init__(
         self,
         session: ClientSession,
-        ssl_context: Optional[ssl.SSLContext] = None,
+        ssl_context: ssl.SSLContext | None = None,
     ) -> None:
         """Initialize the API client."""
         self._session = session
-        self._auth: Optional[Dict[str, Any]] = None
+        self._auth: dict[str, Any] | None = None
         self._credentials: tuple[str, str] | None = None
         self._ssl_context = ssl_context
 
@@ -55,7 +55,7 @@ class BaseKippyApi:
 
     async def login(
         self, email: str, password: str, force: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Login to Amazon Cognito and cache the JWT tokens."""
         if not force and self._auth is not None:
             return self._auth
@@ -134,8 +134,8 @@ class BaseKippyApi:
         await self._session.close()
 
     async def execute_graphql(
-        self, query: str, variables: Dict[str, Any] | None = None
-    ) -> Dict[str, Any]:
+        self, query: str, variables: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute a GraphQL query/mutation with automatic token refresh."""
         await self.ensure_login()
 

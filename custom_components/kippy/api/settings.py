@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+from typing import Any
 
 from ._base import BaseKippyApi
 
@@ -27,7 +27,7 @@ class SettingsEndpoint(BaseKippyApi):
         update_frequency: float | None = None,
         gps_on_default: bool | None = None,
         energy_saving_mode: bool | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Modify settings for a specific device via GraphQL."""
 
         responses = {}

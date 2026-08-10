@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 
 from ._base import BaseKippyApi
 
@@ -24,7 +24,7 @@ class HistoryEndpoint(BaseKippyApi):
 
     async def get_positions_history(
         self, pet_id: str, from_date: str, to_date: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Ruft die GPS-Punkte für einen bestimmten Zeitraum ab."""
 
         variables = {

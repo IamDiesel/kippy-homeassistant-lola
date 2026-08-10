@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 from ._base import BaseKippyApi
 
@@ -77,7 +77,7 @@ class KippyMapEndpoint(BaseKippyApi):
         do_sms: bool = True,
         app_action: int | None = None,
         geofence_id: int | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         # 1. Aktuellen Status passiv abfragen
         data = await self.execute_graphql(GET_PETLINK_GPS_QUERY, {"id": str(kippy_id)})
         petlink_gps = data.get("getPetlinkGps", {}).get("petlinkGps") or {}
@@ -152,7 +152,7 @@ class KippyMapEndpoint(BaseKippyApi):
         live_tracking = last_status.get("liveTracking")
         energy_saving = last_status.get("energySavingMode")
 
-        response: Dict[str, Any] = {}
+        response: dict[str, Any] = {}
 
         lat = last_position.get("lat")
         if lat is not None:

@@ -148,13 +148,12 @@ class KippyDataUpdateCoordinator(DataUpdateCoordinator):
 
         task = self._reload_task
         self._reload_task = None
-        if task and not task.done():
-            if not self._pending_reload:
-                current_task = asyncio.current_task()
-                if task is not current_task:
-                    task.cancel()
-                    with suppress(asyncio.CancelledError):
-                        await task
+        if task and not task.done() and not self._pending_reload:
+            current_task = asyncio.current_task()
+            if task is not current_task:
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
         await super().async_shutdown()
 
 

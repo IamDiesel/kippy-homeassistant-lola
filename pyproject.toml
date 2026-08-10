@@ -21,13 +21,13 @@ exclude = ["AGENTS.md"]
 
 [tool.ruff.lint]
 ignore = [
-    "RUF100",
-    "UP031",
-    "DTZ001",
-    "SIM117",
-    "SIM102",
-    "SIM114",
-    "DTZ005",
-    "DTZ011",
-    "TRY401",
+    "RUF100",  # Unused noqa directives
+    "UP031",  # %-formatting instead of f-strings in aoutdated tests
+    "DTZ001",  # datetime without timezone
+    "DTZ005",  # datetime.now() no timezone
+    "DTZ011",  # date.today() instead of datetime.now().date()
+    "SIM102",  # nested if-Statements
+    "SIM114",  # if-Statements with same body
+    "SIM117",  # nested with-Statements
+    "TRY003",  # Exception-Text too long
 ]

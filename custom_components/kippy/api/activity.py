@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any, Dict
+from typing import Any
 
 from ._base import BaseKippyApi
 
@@ -36,7 +36,7 @@ class ActivityEndpoint(BaseKippyApi):
         to_date: str,
         time_division: int,
         _weeks: int,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Retrieve activity categories via GraphQL."""
 
         # AWS erwartet exakt den Start und das Ende der aktuellen Woche in Sekunden

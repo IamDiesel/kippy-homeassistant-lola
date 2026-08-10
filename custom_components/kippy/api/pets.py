@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from ._base import BaseKippyApi
 
@@ -56,7 +56,7 @@ query getPetlinkGps($id: String!) {
 class PetsEndpoint(BaseKippyApi):
     """Mixin implementing the pets endpoint."""
 
-    async def get_pet_kippy_list(self) -> List[Dict[str, Any]]:
+    async def get_pet_kippy_list(self) -> list[dict[str, Any]]:
         """Retrieve a list of all pets and their associated Kippy devices."""
 
         pets_data = await self.execute_graphql(GET_PETS_QUERY)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 from ..const import RETURN_CODE_ERRORS, RETURN_CODES_SUCCESS, SENSITIVE_LOG_FIELDS
 
@@ -25,11 +25,11 @@ def _redact_tree(data: Any, sensitive: set[str]) -> Any:
     return data
 
 
-def _redact(data: Dict[str, Any], extra: set[str] | None = None) -> Dict[str, Any]:
+def _redact(data: dict[str, Any], extra: set[str] | None = None) -> dict[str, Any]:
     """Return a copy of ``data`` with sensitive fields redacted."""
 
     sensitive = SENSITIVE_LOG_FIELDS | (extra or set())
-    return cast(Dict[str, Any], _redact_tree(data, sensitive))
+    return cast(dict[str, Any], _redact_tree(data, sensitive))
 
 
 def _redact_json(text: str) -> str:
@@ -42,16 +42,16 @@ def _redact_json(text: str) -> str:
     return json.dumps(_redact_tree(data, SENSITIVE_LOG_FIELDS))
 
 
-def _decode_json(text: str) -> Dict[str, Any] | None:
+def _decode_json(text: str) -> dict[str, Any] | None:
     """Decode ``text`` as JSON, returning ``None`` on failure."""
 
     try:
-        return cast(Dict[str, Any], json.loads(text))
+        return cast(dict[str, Any], json.loads(text))
     except json.JSONDecodeError:
         return None
 
 
-def _get_return_code(data: Dict[str, Any] | None) -> int | bool | str | None:
+def _get_return_code(data: dict[str, Any] | None) -> int | bool | str | None:
     """Extract the API ``return`` code from ``data`` if present."""
 
     if not isinstance(data, dict):
@@ -79,7 +79,7 @@ def _return_code_error(code: Any) -> str:
     return f"Unknown error code {code}"
 
 
-def _treat_401_as_success(path: str, data: Dict[str, Any]) -> bool:
+def _treat_401_as_success(path: str, data: dict[str, Any]) -> bool:
     """Determine if a 401 response should be treated as a success."""
 
     return_code = _get_return_code(data)

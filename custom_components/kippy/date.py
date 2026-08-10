@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from datetime import date
 
@@ -63,10 +64,8 @@ class KippyHistoryDate(DateEntity, RestoreEntity):
         await super().async_added_to_hass()
         state = await self.async_get_last_state()
         if state and state.state not in (None, "unknown", "unavailable"):
-            try:
+            with contextlib.suppress(ValueError):
                 self._attr_native_value = date.fromisoformat(state.state)
-            except ValueError:
-                pass
 
     async def async_set_value(self, value: date) -> None:
         """Update the value from the UI."""
