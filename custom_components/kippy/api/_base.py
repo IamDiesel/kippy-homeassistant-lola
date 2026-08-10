@@ -39,7 +39,7 @@ class BaseKippyApi:
         self._ssl_context = ssl_context
 
     @classmethod
-    async def async_create(cls, session: ClientSession) -> "BaseKippyApi":
+    async def async_create(cls, session: ClientSession) -> BaseKippyApi:
         """Create an instance of the API client with an SSL context."""
         loop = asyncio.get_running_loop()
         ctx = await loop.run_in_executor(None, ssl.create_default_context)

@@ -20,4 +20,14 @@ disable = [
 exclude = ["AGENTS.md"]
 
 [tool.ruff.lint]
-ignore = ["RUF100", "UP031", "DTZ001", "SIM117"]
+ignore = [
+    "RUF100",
+    "UP031",
+    "DTZ001",
+    "SIM117",
+    "SIM102",
+    "SIM114",
+    "DTZ005",
+    "DTZ011",
+    "TRY401",
+]

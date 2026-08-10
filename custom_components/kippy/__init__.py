@@ -6,7 +6,8 @@ import asyncio
 import json
 import logging
 import os
-from typing import Any, Awaitable
+from collections.abc import Awaitable
+from typing import Any
 
 import voluptuous as vol
 from aiohttp import ClientResponseError

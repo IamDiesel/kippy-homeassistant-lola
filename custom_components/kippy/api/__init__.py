@@ -22,6 +22,6 @@ __all__ = [
     "_redact_json",
     "_return_code_error",
     "_treat_401_as_success",
-    "_weeks_param",
     "_tz_hours",
+    "_weeks_param",
 ]

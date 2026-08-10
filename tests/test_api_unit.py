@@ -53,7 +53,7 @@ class _FakeResp:
         self.request_info = MagicMock()
         self.history: tuple = ()
 
-    async def text(self) -> str:  # noqa: D401
+    async def text(self) -> str:
         """Return the canned response text."""
         return self._text
 

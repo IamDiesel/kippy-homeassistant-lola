@@ -35,7 +35,7 @@ class _FakeKippyApi:
             },
         ]
 
-    async def kippymap_action(self, *args, **kwargs) -> dict:  # noqa: D401
+    async def kippymap_action(self, *args, **kwargs) -> dict:
         return {"fake": True}
 
     async def get_activity_categories(self, *args, **kwargs) -> dict:

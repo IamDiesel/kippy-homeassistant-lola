@@ -5,10 +5,11 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+from collections.abc import Awaitable, Iterable
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Awaitable, Callable, Iterable
+from typing import Any, Callable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -197,13 +198,11 @@ def _derive_operating_status(
     status = operating_status_str
 
     if operating_status_int == OPERATING_STATUS.LIVE:
-        if previous_status == OPERATING_STATUS_MAP[OPERATING_STATUS.LIVE]:
+        if previous_status == OPERATING_STATUS_MAP[OPERATING_STATUS.LIVE] or (
+            has_both_times and contact_time == fix_time
+        ):
             status = OPERATING_STATUS_MAP[OPERATING_STATUS.LIVE]
-        elif has_both_times and contact_time == fix_time:
-            status = OPERATING_STATUS_MAP[OPERATING_STATUS.LIVE]
-        elif previous_status == OPERATING_STATUS_STARTING_LIVE:
-            status = OPERATING_STATUS_STARTING_LIVE
-        elif (
+        elif previous_status == OPERATING_STATUS_STARTING_LIVE or (
             has_both_times
             and contact_time != fix_time
             and previous_status_code
@@ -415,9 +414,9 @@ class ActivityRefreshContext:
     """Context used by ``ActivityRefreshTimer``."""
 
     hass: HomeAssistant
-    base: "KippyDataUpdateCoordinator"
-    map: "KippyMapDataUpdateCoordinator"
-    activity: "KippyActivityCategoriesDataUpdateCoordinator"
+    base: KippyDataUpdateCoordinator
+    map: KippyMapDataUpdateCoordinator
+    activity: KippyActivityCategoriesDataUpdateCoordinator
 
 
 class ActivityRefreshTimer:
