@@ -1,26 +1,12 @@
-import pytest
-
-pytestmark = pytest.mark.skip(reason="Veraltet: Nutzt alte REST-API statt GraphQL")
-
 """Integration tests for the real Kippy API.
 
-These tests require valid credentials defined in environment variables or the
-``.secrets/kippy.env`` file. When credentials are missing or use placeholder
-values like ``"<REDACTED>"``, the tests are skipped. Tests for the in-memory
-fake API live in ``test_api_fake.py``.
+These tests require valid credentials defined in environment variables or
+the ``.secrets/kippy.env`` file. When credentials are missing or use
+placeholder values like ``"<REDACTED>"``, the tests are skipped.
+Tests for the in-memory fake API live in ``test_api_fake.py``.
 """
 
 from __future__ import annotations
-import pytest
-pytest.skip(allow_module_level=True)
-
-import pytest
-pytestmark = pytest.mark.skip(reason="Veraltet: Nutzt alte REST-API statt GraphQL")
-
-
-import pytest
-pytestmark = pytest.mark.skip(reason='Veraltet: Nutzt alte REST-API statt GraphQL')
-
 
 import asyncio
 import os
@@ -41,6 +27,8 @@ from dotenv import load_dotenv
 
 from custom_components.kippy.api import KippyApi
 from custom_components.kippy.const import MISSING_CREDENTIAL_PLACEHOLDERS
+
+pytestmark = pytest.mark.skip(reason="Deprecated: Uses old REST API instead of GraphQL")
 
 SECRETS_FILE = Path(__file__).resolve().parents[1] / ".secrets" / "kippy.env"
 
@@ -336,6 +324,3 @@ async def test_kippymap_action_and_activity_categories_no_pet_id(
 
     with pytest.raises(pytest.skip.Exception):
         await test_kippymap_action_and_activity_categories(api)
-
-import pytest
-pytestmark = pytest.mark.skip(reason='Veraltet: Nutzt alte REST-API statt GraphQL')

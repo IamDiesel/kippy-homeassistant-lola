@@ -1,0 +1,25 @@
+export_history:
+  name: Export History Route
+  description: Fetches historical GPS data for a pet and writes it to a GeoJSON file in the www/ directory.
+  fields:
+    pet_id:
+      name: Pet ID
+      description: The internal Kippy ID of the pet.
+      required: true
+      example: "12345"
+      selector:
+        text:
+    from_date:
+      name: From Date
+      description: Start date in ISO format.
+      required: true
+      example: "2026-08-08T00:00:00.000Z"
+      selector:
+        text:
+    to_date:
+      name: To Date
+      description: End date in ISO format.
+      required: true
+      example: "2026-08-08T23:59:59.999Z"
+      selector:
+        text:

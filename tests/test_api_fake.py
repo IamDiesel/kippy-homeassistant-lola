@@ -1,25 +1,12 @@
-import pytest
-
-pytestmark = pytest.mark.skip(reason="Veraltet: Nutzt alte REST-API statt GraphQL")
-
 # pylint: disable=missing-function-docstring,unused-argument
-
 """Tests for the in-memory fake Kippy API."""
 
 from __future__ import annotations
-import pytest
-pytest.skip(allow_module_level=True)
-
-import pytest
-pytestmark = pytest.mark.skip(reason="Veraltet: Nutzt alte REST-API statt GraphQL")
-
-
-import pytest
-pytestmark = pytest.mark.skip(reason='Veraltet: Nutzt alte REST-API statt GraphQL')
-
 
 import pytest
 import pytest_asyncio
+
+pytestmark = pytest.mark.skip(reason="Deprecated: Uses old REST API instead of GraphQL")
 
 
 class _FakeKippyApi:
@@ -57,14 +44,12 @@ class _FakeKippyApi:
 @pytest_asyncio.fixture(name="api")
 async def _fake_api():
     """Return the fake API instance."""
-
     return _FakeKippyApi()
 
 
 @pytest.mark.asyncio
 async def test_login_succeeds(api) -> None:
     """Ensure the fake API exposes expected codes."""
-
     assert api.app_code == "FAKE_CODE"
     assert api.app_verification_code == "FAKE_VERIFICATION_CODE"
 
@@ -72,7 +57,6 @@ async def test_login_succeeds(api) -> None:
 @pytest.mark.asyncio
 async def test_get_pet_kippy_list_returns_list(api) -> None:
     """The fake API returns the expected pets."""
-
     pets = await api.get_pet_kippy_list()
     assert isinstance(pets, list)
     assert any(
@@ -96,7 +80,6 @@ async def test_get_pet_kippy_list_returns_list(api) -> None:
 @pytest.mark.asyncio
 async def test_kippymap_action_and_activity_categories(api) -> None:
     """The fake API returns placeholder data for map and activity endpoints."""
-
     location = await api.kippymap_action(12345)
     activity = await api.get_activity_categories(12345, "", "", 0, 0)
     assert location == {"fake": True}
@@ -106,14 +89,12 @@ async def test_kippymap_action_and_activity_categories(api) -> None:
 @pytest.mark.asyncio
 async def test_fake_api_flag(api) -> None:
     """Ensure the fake API advertises itself."""
-
     assert api.is_fake is True
 
 
 @pytest.mark.asyncio
 async def test_fake_pet_active_subscription(api) -> None:
     """Ensure the fake API exposes an active pet."""
-
     pets = await api.get_pet_kippy_list()
     assert any(int(p["expired_days"]) < 0 for p in pets)
 
@@ -121,9 +102,5 @@ async def test_fake_pet_active_subscription(api) -> None:
 @pytest.mark.asyncio
 async def test_fake_pet_inactive_subscription(api) -> None:
     """Ensure the fake API exposes an inactive pet."""
-
     pets = await api.get_pet_kippy_list()
     assert any(int(p["expired_days"]) >= 0 for p in pets)
-
-import pytest
-pytestmark = pytest.mark.skip(reason='Veraltet: Nutzt alte REST-API statt GraphQL')

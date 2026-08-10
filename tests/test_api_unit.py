@@ -1,20 +1,6 @@
-import pytest
-
-pytestmark = pytest.mark.skip(reason="Veraltet: Nutzt alte REST-API statt GraphQL")
-
 """Unit tests for the modular Kippy API client."""
 
 from __future__ import annotations
-import pytest
-pytest.skip(allow_module_level=True)
-
-import pytest
-pytestmark = pytest.mark.skip(reason="Veraltet: Nutzt alte REST-API statt GraphQL")
-
-
-import pytest
-pytestmark = pytest.mark.skip(reason='Veraltet: Nutzt alte REST-API statt GraphQL')
-
 
 import asyncio
 import logging
@@ -38,6 +24,8 @@ from custom_components.kippy.api import (
 )
 from custom_components.kippy.const import REQUEST_HEADERS, RETURN_VALUES
 
+pytestmark = pytest.mark.skip(reason="Deprecated: Uses old REST API instead of GraphQL")
+
 
 class _CM:
     """Simple async context manager for fake responses."""
@@ -47,12 +35,10 @@ class _CM:
 
     async def __aenter__(self):
         """Return the wrapped fake response."""
-
         return self.resp
 
     async def __aexit__(self, exc_type, exc, tb):
         """Exit without suppressing exceptions."""
-
         return False
 
 
@@ -68,12 +54,10 @@ class _FakeResp:
 
     async def text(self) -> str:  # noqa: D401
         """Return the canned response text."""
-
         return self._text
 
     def raise_for_status(self) -> None:
         """Raise a :class:`ClientResponseError` for HTTP errors."""
-
         if self.status >= 400:
             raise ClientResponseError(
                 self.request_info,
@@ -87,7 +71,6 @@ class _FakeResp:
 @pytest.mark.asyncio
 async def test_login_handles_return_code_failure() -> None:
     """Login raises for unsuccessful return codes."""
-
     resp = _FakeResp(200, '{"return": 108}')
     session = MagicMock()
     session.post.return_value = _CM(resp)
@@ -100,7 +83,6 @@ async def test_login_handles_return_code_failure() -> None:
 @pytest.mark.asyncio
 async def test_post_with_refresh_retries_on_expired() -> None:
     """post_with_refresh refreshes login once then returns data."""
-
     resp1 = _FakeResp(401, '{"return": %d}' % RETURN_VALUES.AUTHORIZATION_EXPIRED)
     resp2 = _FakeResp(200, '{"return": 0, "data": {"ok": true}}')
     session = MagicMock()
@@ -124,7 +106,6 @@ async def test_post_with_refresh_retries_on_expired() -> None:
 @pytest.mark.asyncio
 async def test_post_with_refresh_raises_without_return_code() -> None:
     """post_with_refresh raises when API lacks a return code."""
-
     resp = _FakeResp(200, "{}")
     session = MagicMock()
     session.post.return_value = _CM(resp)
@@ -141,7 +122,6 @@ async def test_post_with_refresh_raises_without_return_code() -> None:
 
 def test_helper_functions_cover_edge_cases() -> None:
     """Exercise helper utilities with bad inputs."""
-
     assert _redact({"list": [{"petID": 1}]}) == {"list": [{"petID": "***"}]}
     assert _decode_json("not json") is None
     assert _get_return_code({"return": "5"}) == 5
@@ -161,7 +141,6 @@ def test_helper_functions_cover_edge_cases() -> None:
 
 def test_ensure_login_raises_without_creds() -> None:
     """ensure_login raises when credentials have not been cached."""
-
     api = KippyApi(MagicMock())
     with pytest.raises(RuntimeError):
         asyncio.get_event_loop().run_until_complete(api.ensure_login())
@@ -170,7 +149,6 @@ def test_ensure_login_raises_without_creds() -> None:
 @pytest.mark.asyncio
 async def test_get_pet_kippy_list_maps_enable_gps(monkeypatch) -> None:
     """enableGPSOnDefault is mapped to gpsOnDefault."""
-
     api = KippyApi(MagicMock())
     api.cache_authentication({"app_code": "1", "app_verification_code": "2"})
     api.ensure_login = AsyncMock()  # type: ignore[assignment]
@@ -197,7 +175,6 @@ async def test_get_pet_kippy_list_maps_enable_gps(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_get_pet_kippy_list_without_enable_gps(monkeypatch) -> None:
     """Pets lacking enableGPSOnDefault remain unchanged."""
-
     api = KippyApi(MagicMock())
     api.cache_authentication({"app_code": "1", "app_verification_code": "2"})
     api.ensure_login = AsyncMock()  # type: ignore[assignment]
@@ -218,7 +195,6 @@ async def test_get_pet_kippy_list_without_enable_gps(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_modify_kippy_settings_calls_post(monkeypatch) -> None:
     """modify_kippy_settings posts expected payload."""
-
     api = KippyApi(MagicMock())
     api.cache_authentication({"app_code": "1", "app_verification_code": "2"})
     api.ensure_login = AsyncMock()  # type: ignore[assignment]
@@ -244,7 +220,6 @@ async def test_modify_kippy_settings_calls_post(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_modify_kippy_settings_propagates_error() -> None:
     """Exceptions from post_with_refresh are raised."""
-
     api = KippyApi(MagicMock())
     api.cache_authentication({"app_code": "1", "app_verification_code": "2"})
     api.ensure_login = AsyncMock()  # type: ignore[assignment]
@@ -259,7 +234,6 @@ async def test_modify_kippy_settings_propagates_error() -> None:
 @pytest.mark.asyncio
 async def test_modify_kippy_settings_uses_bools(monkeypatch) -> None:
     """gps_on_default is sent as boolean values."""
-
     api = KippyApi(MagicMock())
     api.cache_authentication({"app_code": "1", "app_verification_code": "2"})
     api.ensure_login = AsyncMock()  # type: ignore[assignment]
@@ -286,7 +260,6 @@ async def test_modify_kippy_settings_uses_bools(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_post_with_refresh_logs_json(caplog) -> None:
     """Payloads are logged as JSON with lowercase booleans."""
-
     resp = _FakeResp(200, '{"return": 0}')
     session = MagicMock()
     session.post.return_value = _CM(resp)
@@ -299,6 +272,3 @@ async def test_post_with_refresh_logs_json(caplog) -> None:
     await api.post_with_refresh("/x", {"gps_on_default": True}, REQUEST_HEADERS)
 
     assert '"gps_on_default": true' in caplog.text
-
-import pytest
-pytestmark = pytest.mark.skip(reason='Veraltet: Nutzt alte REST-API statt GraphQL')

@@ -105,29 +105,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> boo
 
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
-    # --- Start des neuen Custom Services ---
+    # --- Start of the custom service ---
     async def handle_export_history(call: ServiceCall):
-        """Exportiert die GPS Historie als GeoJSON Datei."""
+        """Export the GPS history as a GeoJSON file."""
         pet_id = call.data.get("pet_id")
         from_date = call.data.get("from_date")
         to_date = call.data.get("to_date")
 
+        # Resolve the actual pet name from the coordinator data
+        pet_name = "Pet"
+        for pet in coordinator.data.get("pets", []):
+            if str(pet.get("petID")) == str(pet_id):
+                pet_name = pet.get("petName", "Pet")
+                break
+
         _LOGGER.info(
-            "Exportiere Kippy Route für Pet %s von %s bis %s",
+            "Exporting Kippy route for pet %s (%s) from %s to %s",
+            pet_name,
             pet_id,
             from_date,
             to_date,
         )
 
-        # 1. Daten abrufen
+        # 1. Fetch data from the API
         positions = await api.get_positions_history(pet_id, from_date, to_date)
 
-        # 2. Wegpunkte filtern und konvertieren
+        # 2. Filter and convert waypoints
         coords = []
         for pos in reversed(
             positions
-        ):  # Wir drehen die Liste um, falls AWS vom neusten zum ältesten sortiert
-            # Standby-Pings ("SKIP") und Null-Koordinaten ignorieren
+        ):  # Reverse the list in case AWS sorts from newest to oldest
+            # Ignore standby pings ("SKIP") and null coordinates
             if pos.get("positionType") == "SKIP" or pos.get("isSkip"):
                 continue
 
@@ -136,20 +144,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> boo
             if not lat or not lng:
                 continue
 
-            # Ausreißer ignorieren (alles über 100m Ungenauigkeit wird gefiltert)
+            # Ignore outliers (filter anything over 100m inaccuracy)
             if pos.get("radius", 999) > 100:
                 continue
 
-            # WICHTIG: GeoJSON erwartet das Format [Longitude, Latitude]!
+            # IMPORTANT: GeoJSON expects the format [Longitude, Latitude]!
             coords.append([lng, lat])
 
         if not coords:
             _LOGGER.warning(
-                "Keine gültigen Kippy-Wegpunkte in diesem Zeitraum gefunden."
+                "No valid Kippy waypoints found in this time range for %s.", pet_name
             )
             return
 
-        # 3. GeoJSON Struktur aufbauen
+        # 3. Build GeoJSON structure
         geojson_data = {
             "type": "FeatureCollection",
             "features": [
@@ -157,7 +165,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> boo
                     "type": "Feature",
                     "geometry": {"type": "LineString", "coordinates": coords},
                     "properties": {
-                        "name": "Lolas Route",
+                        "name": f"{pet_name} Route",
                         "stroke": "#FF0000",
                         "stroke-width": 4,
                     },
@@ -165,10 +173,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> boo
             ],
         }
 
-        # 4. In den /config/www/ Ordner schreiben
+        # 4. Write to the /config/www/ directory
         www_dir = hass.config.path("www")
         os.makedirs(www_dir, exist_ok=True)
-        # Wir speichern die Datei pro Pet ab, falls du mal einen zweiten Kippy kaufst
+
+        # Save the file per pet to support multiple Kippy devices
         file_path = os.path.join(www_dir, f"kippy_history_{pet_id}.geojson")
 
         def write_file():
@@ -176,7 +185,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> boo
                 json.dump(geojson_data, f)
 
         await hass.async_add_executor_job(write_file)
-        _LOGGER.info("GeoJSON Datei erfolgreich unter %s gespeichert.", file_path)
+        _LOGGER.info("GeoJSON file successfully saved to %s", file_path)
 
     hass.services.async_register(
         DOMAIN,
@@ -190,7 +199,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> boo
             }
         ),
     )
-    # --- Ende des neuen Custom Services ---
+    # --- End of the custom service ---
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
