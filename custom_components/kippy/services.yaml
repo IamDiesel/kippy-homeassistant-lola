@@ -1,6 +1,9 @@
 export_history:
   name: Export History Route
-  description: Fetches historical GPS data for a pet and writes it to a GeoJSON file in the www/ directory.
+  description: >-
+    Fetches historical GPS data for a pet and writes it to the www/ directory.
+    Choose one or more output formats; all of them include the waypoint
+    timestamps. Returns the written file paths and their /local/ URLs.
   fields:
     pet_id:
       name: Pet ID
@@ -23,3 +26,23 @@ export_history:
       example: "2026-08-08T23:59:59.999Z"
       selector:
         text:
+    formats:
+      name: Formats
+      description: >-
+        Which files to write. GeoJSON track keeps the route as one line with
+        timestamps in properties.coordinateProperties.times. GeoJSON points
+        writes one point per waypoint including time, accuracy and position
+        type. GPX is the native track format with a <time> per track point.
+      required: false
+      default:
+        - geojson_track
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: GeoJSON track (LineString with times)
+              value: geojson_track
+            - label: GeoJSON points (one feature per waypoint)
+              value: geojson_points
+            - label: GPX 1.1 track
+              value: gpx

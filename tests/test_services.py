@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import voluptuous as vol
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -54,12 +55,76 @@ async def test_export_history_service(hass, enable_custom_integrations) -> None:
 
     # Call the service and mock file operations
     with patch("os.makedirs"), patch("builtins.open"):
-        await hass.services.async_call(
+        response = await hass.services.async_call(
             DOMAIN,
             "export_history",
             {"pet_id": "1", "from_date": "2026-08-01", "to_date": "2026-08-10"},
             blocking=True,
+            return_response=True,
         )
 
     # Ensure the API was called to fetch the history
     api.get_positions_history.assert_called_once_with("1", "2026-08-01", "2026-08-10")
+
+    # Only the valid waypoint survives filtering, default format is the track
+    assert response["waypoints"] == 1
+    assert response["urls"] == ["/local/kippy_history_1.geojson"]
+
+    # Requesting every format writes one file each
+    with patch("os.makedirs"), patch("builtins.open"):
+        response = await hass.services.async_call(
+            DOMAIN,
+            "export_history",
+            {
+                "pet_id": "1",
+                "from_date": "2026-08-01",
+                "to_date": "2026-08-10",
+                "formats": ["geojson_track", "geojson_points", "gpx"],
+            },
+            blocking=True,
+            return_response=True,
+        )
+
+    assert response["urls"] == [
+        "/local/kippy_history_1.geojson",
+        "/local/kippy_history_1_points.geojson",
+        "/local/kippy_history_1.gpx",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_export_history_rejects_unknown_format(
+    hass, enable_custom_integrations
+) -> None:
+    """An unknown output format is rejected by the service schema."""
+    api = AsyncMock()
+    api.get_pet_kippy_list = AsyncMock(
+        return_value=[
+            {"petID": 1, "petName": "Lola", "kippyID": 123, "expired_days": -5}
+        ]
+    )
+    api.kippymap_action = AsyncMock(return_value={})
+    api.get_activity_categories = AsyncMock(return_value={})
+
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_EMAIL: "a", CONF_PASSWORD: "b"})
+    entry.add_to_hass(hass)
+
+    with (
+        patch("custom_components.kippy.aiohttp_client.async_get_clientsession"),
+        patch("custom_components.kippy.KippyApi.async_create", return_value=api),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id) is True
+        await hass.async_block_till_done()
+
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            "export_history",
+            {
+                "pet_id": "1",
+                "from_date": "2026-08-01",
+                "to_date": "2026-08-10",
+                "formats": ["kml"],
+            },
+            blocking=True,
+        )

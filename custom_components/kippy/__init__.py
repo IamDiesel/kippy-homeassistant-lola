@@ -13,7 +13,12 @@ import voluptuous as vol
 from aiohttp import ClientResponseError
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    SupportsResponse,
+)
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers import config_validation as cv
@@ -27,6 +32,17 @@ from .coordinator import (
     KippyActivityCategoriesDataUpdateCoordinator,
     KippyDataUpdateCoordinator,
     KippyMapDataUpdateCoordinator,
+)
+from .export import (
+    DEFAULT_EXPORT_FORMATS,
+    EXPORT_FORMATS,
+    GEOJSON_POINTS,
+    GEOJSON_TRACK,
+    GPX,
+    build_geojson_points,
+    build_geojson_track,
+    build_gpx,
+    filter_positions,
 )
 from .helpers import (
     API_EXCEPTIONS,
@@ -107,11 +123,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> boo
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     # --- Start of the custom service ---
-    async def handle_export_history(call: ServiceCall):
-        """Export the GPS history as a GeoJSON file."""
+    async def handle_export_history(call: ServiceCall) -> ServiceResponse:
+        """Export the GPS history in the requested file formats."""
         pet_id = call.data.get("pet_id")
         from_date = call.data.get("from_date")
         to_date = call.data.get("to_date")
+        formats = list(
+            dict.fromkeys(call.data.get("formats") or DEFAULT_EXPORT_FORMATS)
+        )
 
         # Resolve the actual pet name from the coordinator data
         pet_name = "Pet"
@@ -121,72 +140,64 @@ async def async_setup_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> boo
                 break
 
         _LOGGER.info(
-            "Exporting Kippy route for pet %s (%s) from %s to %s",
+            "Exporting Kippy route for pet %s (%s) from %s to %s as %s",
             pet_name,
             pet_id,
             from_date,
             to_date,
+            ", ".join(formats),
         )
 
         # 1. Fetch data from the API
         positions = await api.get_positions_history(pet_id, from_date, to_date)
 
-        # 2. Filter and convert waypoints
-        coords = []
-        for pos in reversed(
-            positions
-        ):  # Reverse the list in case AWS sorts from newest to oldest
-            # Ignore standby pings ("SKIP") and null coordinates
-            if pos.get("positionType") == "SKIP" or pos.get("isSkip"):
-                continue
+        # 2. Filter and normalize waypoints (oldest first, timestamps included)
+        waypoints = filter_positions(positions)
 
-            lat = pos.get("lat")
-            lng = pos.get("lng")
-            if not lat or not lng:
-                continue
-
-            # Ignore outliers (filter anything over 100m inaccuracy)
-            if pos.get("radius", 999) > 100:
-                continue
-
-            # IMPORTANT: GeoJSON expects the format [Longitude, Latitude]!
-            coords.append([lng, lat])
-
-        if not coords:
+        if not waypoints:
             _LOGGER.warning(
                 "No valid Kippy waypoints found in this time range for %s.", pet_name
             )
-            return
+            return {"waypoints": 0, "files": []}
 
-        # 3. Build GeoJSON structure
-        geojson_data = {
-            "type": "FeatureCollection",
-            "features": [
-                {
-                    "type": "Feature",
-                    "geometry": {"type": "LineString", "coordinates": coords},
-                    "properties": {
-                        "name": f"{pet_name} Route",
-                        "stroke": "#FF0000",
-                        "stroke-width": 4,
-                    },
-                }
-            ],
-        }
+        # 3. Build the requested representations
+        www_dir = hass.config.path("www")
+        # Save the files per pet to support multiple Kippy devices
+        contents: dict[str, str] = {}
+
+        if GEOJSON_TRACK in formats:
+            contents[f"kippy_history_{pet_id}.geojson"] = json.dumps(
+                build_geojson_track(waypoints, pet_name)
+            )
+
+        if GEOJSON_POINTS in formats:
+            contents[f"kippy_history_{pet_id}_points.geojson"] = json.dumps(
+                build_geojson_points(waypoints, pet_name)
+            )
+
+        if GPX in formats:
+            contents[f"kippy_history_{pet_id}.gpx"] = build_gpx(waypoints, pet_name)
 
         # 4. Write to the /config/www/ directory
-        www_dir = hass.config.path("www")
-        os.makedirs(www_dir, exist_ok=True)
+        def write_files() -> list[str]:
+            os.makedirs(www_dir, exist_ok=True)
+            written: list[str] = []
+            for file_name, content in contents.items():
+                file_path = os.path.join(www_dir, file_name)
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                written.append(file_path)
+            return written
 
-        # Save the file per pet to support multiple Kippy devices
-        file_path = os.path.join(www_dir, f"kippy_history_{pet_id}.geojson")
+        written_paths = await hass.async_add_executor_job(write_files)
+        for file_path in written_paths:
+            _LOGGER.info("Export file successfully saved to %s", file_path)
 
-        def write_file():
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(geojson_data, f)
-
-        await hass.async_add_executor_job(write_file)
-        _LOGGER.info("GeoJSON file successfully saved to %s", file_path)
+        return {
+            "waypoints": len(waypoints),
+            "files": written_paths,
+            "urls": [f"/local/{name}" for name in contents],
+        }
 
     hass.services.async_register(
         DOMAIN,
@@ -197,8 +208,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: KippyConfigEntry) -> boo
                 vol.Required("pet_id"): cv.string,
                 vol.Required("from_date"): cv.string,
                 vol.Required("to_date"): cv.string,
+                vol.Optional("formats", default=list(DEFAULT_EXPORT_FORMATS)): vol.All(
+                    cv.ensure_list, [vol.In(EXPORT_FORMATS)], vol.Length(min=1)
+                ),
             }
         ),
+        supports_response=SupportsResponse.OPTIONAL,
     )
     # --- End of the custom service ---
 
