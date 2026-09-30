@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime, timezone
-from typing import Any, Iterable
+from typing import Any
 from xml.sax.saxutils import escape, quoteattr
 
 GEOJSON_TRACK = "geojson_track"
@@ -173,11 +174,13 @@ def build_gpx(waypoints: list[dict[str, Any]], pet_name: str) -> str:
     track_name = f"{pet_name} Route"
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        f'<gpx version="1.1" creator={quoteattr(GPX_CREATOR)} '
-        'xmlns="http://www.topografix.com/GPX/1/1" '
-        'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
-        'xsi:schemaLocation="http://www.topografix.com/GPX/1/1 '
-        'http://www.topografix.com/GPX/1/1/gpx.xsd">',
+        (
+            f'<gpx version="1.1" creator={quoteattr(GPX_CREATOR)} '
+            'xmlns="http://www.topografix.com/GPX/1/1" '
+            'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+            'xsi:schemaLocation="http://www.topografix.com/GPX/1/1 '
+            'http://www.topografix.com/GPX/1/1/gpx.xsd">'
+        ),
         "  <metadata>",
         f"    <name>{escape(track_name)}</name>",
         "  </metadata>",
