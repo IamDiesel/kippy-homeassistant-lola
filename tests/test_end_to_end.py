@@ -1,6 +1,6 @@
 """End-to-end tests for the Kippy integration."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -13,7 +13,7 @@ from custom_components.kippy.const import DOMAIN, OPERATING_STATUS
 @pytest.mark.asyncio
 async def test_pet_setup_end_to_end(hass, enable_custom_integrations) -> None:
     """Test full integration setup and verify sensor states."""
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     today_str = today.strftime("%Y-%m-%d")
     ts = int(today.timestamp())
 

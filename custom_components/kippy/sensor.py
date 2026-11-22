@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -606,7 +606,7 @@ class _KippyBaseMapEntity(KippyMapEntity, SensorEntity):
             return None
         ts = self.coordinator.data.get(key)
         try:
-            return datetime.fromtimestamp(int(ts), timezone.utc)
+            return datetime.fromtimestamp(int(ts), UTC)
         except (TypeError, ValueError, OSError):
             return None
 
@@ -714,7 +714,7 @@ class KippyNextContactSensor(_KippyBaseMapEntity):
             return None
         try:
             return datetime.fromtimestamp(
-                int(contact) + int(update_frequency) * 3600, timezone.utc
+                int(contact) + int(update_frequency) * 3600, UTC
             )
         except (TypeError, ValueError, OSError):
             return None

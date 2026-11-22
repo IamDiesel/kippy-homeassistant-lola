@@ -8,7 +8,7 @@ import logging
 from collections.abc import Awaitable, Callable, Iterable
 from contextlib import suppress
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -467,7 +467,7 @@ class ActivityRefreshTimer:
         try:
             when = datetime.fromtimestamp(
                 int(contact) + int(update_frequency) * 3600 + self._delay_minutes * 60,
-                timezone.utc,
+                UTC,
             )
         except (TypeError, ValueError, OSError):
             return
